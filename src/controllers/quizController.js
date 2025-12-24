@@ -15,6 +15,16 @@ const uploadToCloudinary = (buffer, resourceType) => {
   });
 };
 
+// Helper function to generate shareable link
+const getShareableLink = (req, token) => {
+  // If BASE_URL is set in environment, use it
+  if (process.env.BASE_URL) {
+    return `${process.env.BASE_URL}/quiz/${token}`;
+  }
+  // Otherwise use the request host
+  return `${req.protocol}://${req.get('host')}/quiz/${token}`;
+};
+
 // Create a new quiz
 exports.createQuiz = async (req, res) => {
   try {
@@ -42,7 +52,7 @@ exports.createQuiz = async (req, res) => {
         description: quiz.description,
         timeLimit: quiz.timeLimit,
         shareableToken: quiz.shareableToken,
-        shareableLink: `${req.protocol}://${req.get('host')}/quiz/${quiz.shareableToken}`
+        shareableLink: getShareableLink(req, quiz.shareableToken)
       }
     });
   } catch (error) {
@@ -66,7 +76,7 @@ exports.getMyQuizzes = async (req, res) => {
       isLocked: quiz.isLocked,
       questionCount: quiz.questions.length,
       shareableToken: quiz.shareableToken,
-      shareableLink: `${req.protocol}://${req.get('host')}/quiz/${quiz.shareableToken}`,
+      shareableLink: getShareableLink(req, quiz.shareableToken),
       createdAt: quiz.createdAt
     }));
 
