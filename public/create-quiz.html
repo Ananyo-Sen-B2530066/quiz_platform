@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Quiz - Quiz Platform</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+        }
+        .navbar {
+            background: #667eea;
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .navbar h1 {
+            font-size: 24px;
+        }
+        .back-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .container {
+            max-width: 900px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #333;
+        }
+        input[type="text"], input[type="number"], select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            font-family: inherit;
+        }
+        textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+            min-height: 100px;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        button, .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 5px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: #667eea;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        .btn-secondary:hover {
+            background: #5a6268;
+        }
+        .btn-success {
+            background: #28a745;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #218838;
+        }
+        .btn-danger {
+            background: #dc3545;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        .btn-warning {
+            background: #ffc107;
+            color: #333;
+        }
+        .btn-warning:hover {
+            background: #e0a800;
+        }
+        .question-list {
+            margin-top: 20px;
+        }
+        .question-item {
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            position: relative;
+        }
+        .question-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 10px;
+        }
+        .question-text {
+            font-weight: 500;
+            color: #333;
+            flex: 1;
+            white-space: pre-wrap;
+        }
+        .question-actions {
+            display: flex;
+            gap: 10px;
+        }
+        .question-meta {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        .option-list {
+            margin-top: 10px;
+            padding-left: 20px;
+        }
+        .option-item {
+            margin: 8px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .option-input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+            background: white;
+            padding: 10px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        .option-input-wrapper input[type="text"] {
+            flex: 1;
+            margin: 0;
+        }
+        .option-input-wrapper input[type="radio"],
+        .option-input-wrapper input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+        }
+        .correct-badge {
+            background: #28a745;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 11px;
+        }
+        .media-preview {
+            margin-top: 10px;
+            max-width: 200px;
+        }
+        .media-preview img {
+            max-width: 100%;
+            border-radius: 5px;
+        }
+        .file-input-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+        .file-input-label {
+            background: #f0f0f0;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            display: inline-block;
+        }
+        .file-input-label:hover {
+            background: #e0e0e0;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .step {
+            display: none;
+        }
+        .step.active {
+            display: block;
+        }
+        .success-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            border: 1px solid #c3e6cb;
+        }
+        .share-box {
+            background: #e7f3ff;
+            padding: 20px;
+            border-radius: 5px;
+            margin-top: 20px;
+        }
+        .share-link {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin-top: 10px;
+            word-break: break-all;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+        }
+        .accepted-answers {
+            margin-top: 10px;
+        }
+        .answer-tag {
+            display: inline-block;
+            background: #e7f3ff;
+            padding: 5px 10px;
+            border-radius: 3px;
+            margin: 5px 5px 5px 0;
+            font-size: 13px;
+        }
+        .answer-tag button {
+            background: none;
+            border: none;
+            color: #dc3545;
+            cursor: pointer;
+            padding: 0 0 0 5px;
+            font-weight: bold;
+        }
+        .add-answer-box {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .add-answer-box input {
+            flex: 1;
+        }
+        .info-text {
+            font-size: 12px;
+            color: #666;
+            font-style: italic;
+            margin-top: 5px;
+        }
+        .editing-mode {
+            border: 2px solid #ffc107;
+            background: #fffbf0;
+        }
+        .edit-indicator {
+            background: #ffc107;
+            color: #333;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <h1>Create Quiz</h1>
+        <a href="/dashboard" class="back-btn">← Back to Dashboard</a>
+    </div>
+
+    <div class="container">
+        <!-- Step 1: Quiz Details -->
+        <div id="step1" class="card step active">
+            <h2>Step 1: Quiz Details</h2>
+            <form id="quizDetailsForm">
+                <div class="form-group">
+                    <label>Quiz Title *</label>
+                    <input type="text" id="quizTitle" required placeholder="e.g., General Knowledge Quiz">
+                </div>
+                <div class="form-group">
+                    <label>Description</label>
+                    <textarea id="quizDescription" placeholder="Brief description of your quiz" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Time Limit (minutes) *</label>
+                    <input type="number" id="quizTimeLimit" required min="1" value="30">
+                </div>
+                <button type="submit" class="btn btn-primary">Next: Add Questions →</button>
+            </form>
+        </div>
+
+        <!-- Step 2: Add Questions -->
+        <div id="step2" class="card step">
+            <h2>Step 2: Add Questions</h2>
+            <p style="color: #666; margin-bottom: 20px;">Quiz: <strong id="displayQuizTitle"></strong></p>
+
+            <div id="editIndicator" class="edit-indicator" style="display: none;">
+                ✏️ EDITING MODE - Update the question below
+            </div>
+
+            <form id="questionForm" class="card" style="box-shadow: none; border: 2px solid #ddd;">
+                <div class="form-group">
+                    <label>Question Text *</label>
+                    <textarea id="questionText" required placeholder="Enter your question (can be multi-line)" rows="4"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label>Question Type *</label>
+                    <select id="questionType" onchange="handleQuestionTypeChange()">
+                        <option value="mcq">Multiple Choice (Single Answer)</option>
+                        <option value="msq">Multiple Choice (Multiple Answers)</option>
+                        <option value="text">Text Answer</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Add Media (Optional)</label>
+                    <div class="file-input-wrapper">
+                        <label for="mediaFile" class="file-input-label">📎 Choose Image/Video/Audio</label>
+                        <input type="file" id="mediaFile" accept="image/*,video/*,audio/*">
+                    </div>
+                    <div id="mediaPreview" style="margin-top: 10px; color: #666;"></div>
+                </div>
+
+                <div id="optionsContainer" class="form-group">
+                    <label>Answer Options *</label>
+                    <p class="info-text" id="optionTypeInfo">Select ONE correct answer</p>
+                    <div id="optionsList"></div>
+                    <button type="button" class="btn btn-secondary" onclick="addOption()">+ Add Option</button>
+                </div>
+
+                <div id="textAnswerContainer" class="form-group" style="display: none;">
+                    <label>Accepted Answers *</label>
+                    <p class="info-text">Add all possible correct answers (e.g., "4", "four", "Four")</p>
+                    <div class="add-answer-box">
+                        <input type="text" id="newAnswer" placeholder="Type an answer and click Add">
+                        <button type="button" class="btn btn-secondary" onclick="addAcceptedAnswer()">Add Answer</button>
+                    </div>
+                    <div class="accepted-answers" id="acceptedAnswersList"></div>
+                </div>
+
+                <div class="button-group">
+                    <button type="submit" class="btn btn-primary" id="submitQuestionBtn">Add Question</button>
+                    <button type="button" class="btn btn-secondary" onclick="cancelEdit()" id="cancelEditBtn" style="display: none;">Cancel Edit</button>
+                    <button type="button" class="btn btn-success" onclick="finishQuiz()">Finish & Get Link</button>
+                </div>
+            </form>
+
+            <div class="question-list">
+                <h3>Added Questions (<span id="questionCount">0</span>)</h3>
+                <div id="questionsList"></div>
+            </div>
+        </div>
+
+        <!-- Step 3: Success -->
+        <div id="step3" class="card step">
+            <h2>✅ Quiz Created Successfully!</h2>
+            <div class="success-message">
+                Your quiz "<strong id="finalQuizTitle"></strong>" has been created with <strong id="finalQuestionCount"></strong> questions.
+            </div>
+
+            <div class="share-box">
+                <h3>Share Your Quiz</h3>
+                <p>Share this link with participants:</p>
+                <div class="share-link">
+                    <span id="shareableLink"></span>
+                    <button class="btn btn-primary" onclick="copyShareLink()">Copy Link</button>
+                </div>
+            </div>
+
+            <div class="button-group" style="margin-top: 30px;">
+                <a href="/dashboard" class="btn btn-primary">Go to Dashboard</a>
+                <button class="btn btn-secondary" onclick="createAnother()">Create Another Quiz</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/api';
+        let token = localStorage.getItem('token');
+        let currentQuizId = null;
+        let questions = [];
+        let optionCount = 0;
+        let acceptedAnswers = [];
+        let editingQuestionIndex = -1;
+
+        if (!token) {
+            window.location.href = '/';
+        }
+
+        // Initialize with 2 options
+        setTimeout(() => {
+            addOption();
+            addOption();
+        }, 100);
+
+        document.getElementById('quizDetailsForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            await createQuiz();
+        });
+
+        document.getElementById('questionForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            if (editingQuestionIndex >= 0) {
+                await updateQuestion();
+            } else {
+                await addQuestion();
+            }
+        });
+
+        document.getElementById('mediaFile').addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                document.getElementById('mediaPreview').textContent = `Selected: ${file.name}`;
+            }
+        });
+
+        document.getElementById('newAnswer').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                addAcceptedAnswer();
+            }
+        });
+
+        async function createQuiz() {
+            const title = document.getElementById('quizTitle').value;
+            const description = document.getElementById('quizDescription').value;
+            const timeLimit = document.getElementById('quizTimeLimit').value;
+
+            try {
+                const response = await fetch(`${API_URL}/quiz`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({ title, description, timeLimit })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    currentQuizId = data.quiz.id;
+                    document.getElementById('displayQuizTitle').textContent = title;
+                    document.getElementById('finalQuizTitle').textContent = title;
+                    document.getElementById('shareableLink').textContent = data.quiz.shareableLink;
+                    
+                    document.getElementById('step1').classList.remove('active');
+                    document.getElementById('step2').classList.add('active');
+                } else {
+                    alert(data.error || 'Error creating quiz');
+                }
+            } catch (error) {
+                alert('Network error: ' + error.message);
+            }
+        }
+
+        function handleQuestionTypeChange() {
+            const type = document.getElementById('questionType').value;
+            const optionsContainer = document.getElementById('optionsContainer');
+            const textAnswerContainer = document.getElementById('textAnswerContainer');
+            const optionTypeInfo = document.getElementById('optionTypeInfo');
+
+            if (type === 'text') {
+                optionsContainer.style.display = 'none';
+                textAnswerContainer.style.display = 'block';
+            } else {
+                optionsContainer.style.display = 'block';
+                textAnswerContainer.style.display = 'none';
+                
+                if (type === 'mcq') {
+                    optionTypeInfo.textContent = 'Select ONE correct answer (radio buttons)';
+                    updateOptionInputTypes('radio');
+                } else {
+                    optionTypeInfo.textContent = 'Select MULTIPLE correct answers (checkboxes)';
+                    updateOptionInputTypes('checkbox');
+                }
+            }
+        }
+
+        function updateOptionInputTypes(type) {
+            const optionsList = document.getElementById('optionsList');
+            const inputs = optionsList.querySelectorAll('input[type="radio"], input[type="checkbox"]');
+            inputs.forEach(input => {
+                const isChecked = input.checked;
+                const newInput = document.createElement('input');
+                newInput.type = type;
+                newInput.name = 'correctOption';
+                newInput.checked = isChecked;
+                newInput.style.width = '20px';
+                newInput.style.height = '20px';
+                newInput.style.cursor = 'pointer';
+                input.parentNode.replaceChild(newInput, input);
+            });
+        }
+
+        function addOption() {
+            optionCount++;
+            const questionType = document.getElementById('questionType').value;
+            const inputType = questionType === 'mcq' ? 'radio' : 'checkbox';
+            
+            const optionsList = document.getElementById('optionsList');
+            const optionDiv = document.createElement('div');
+            optionDiv.className = 'option-input-wrapper';
+            optionDiv.innerHTML = `
+                <input type="text" placeholder="Option ${optionCount}" class="option-text" data-option-id="${optionCount}">
+                <label style="display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;">
+                    <input type="${inputType}" name="correctOption" style="width: 20px; height: 20px; cursor: pointer;">
+                    <span style="font-size: 12px;">Correct</span>
+                </label>
+                <button type="button" class="btn btn-danger" style="padding: 8px 12px;" onclick="this.parentElement.remove()">×</button>
+            `;
+            optionsList.appendChild(optionDiv);
+        }
+
+        function addAcceptedAnswer() {
+            const input = document.getElementById('newAnswer');
+            const answer = input.value.trim();
+            
+            if (!answer) {
+                alert('Please enter an answer');
+                return;
+            }
+            
+            if (acceptedAnswers.includes(answer)) {
+                alert('This answer already exists');
+                return;
+            }
+            
+            acceptedAnswers.push(answer);
+            input.value = '';
+            displayAcceptedAnswers();
+        }
+
+        function displayAcceptedAnswers() {
+            const container = document.getElementById('acceptedAnswersList');
+            container.innerHTML = acceptedAnswers.map((answer, index) => `
+                <span class="answer-tag">
+                    ${answer}
+                    <button type="button" onclick="removeAcceptedAnswer(${index})">×</button>
+                </span>
+            `).join('');
+        }
+
+        function removeAcceptedAnswer(index) {
+            acceptedAnswers.splice(index, 1);
+            displayAcceptedAnswers();
+        }
+
+        async function addQuestion() {
+            const questionText = document.getElementById('questionText').value;
+            const questionType = document.getElementById('questionType').value;
+            const mediaFile = document.getElementById('mediaFile').files[0];
+
+            const formData = new FormData();
+            formData.append('questionText', questionText);
+            formData.append('questionType', questionType);
+
+            if (mediaFile) {
+                formData.append('media', mediaFile);
+            }
+
+            if (questionType === 'text') {
+                if (acceptedAnswers.length === 0) {
+                    alert('Please add at least one accepted answer');
+                    return;
+                }
+                formData.append('correctAnswer', JSON.stringify(acceptedAnswers));
+            } else {
+                const options = [];
+                const optionInputs = document.querySelectorAll('.option-text');
+                const correctInputs = document.querySelectorAll('input[name="correctOption"]');
+                
+                optionInputs.forEach((input, index) => {
+                    if (input.value.trim()) {
+                        options.push({
+                            text: input.value.trim(),
+                            isCorrect: correctInputs[index].checked
+                        });
+                    }
+                });
+
+                if (options.length < 2) {
+                    alert('Please add at least 2 options');
+                    return;
+                }
+
+                const hasCorrect = options.some(opt => opt.isCorrect);
+                if (!hasCorrect) {
+                    alert('Please mark at least one option as correct');
+                    return;
+                }
+
+                formData.append('options', JSON.stringify(options));
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/quiz/${currentQuizId}/questions`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    questions.push(data.question);
+                    displayQuestions();
+                    resetQuestionForm();
+                    alert('Question added successfully!');
+                } else {
+                    alert(data.error || 'Error adding question');
+                }
+            } catch (error) {
+                alert('Network error: ' + error.message);
+            }
+        }
+
+        function editQuestion(index) {
+            editingQuestionIndex = index;
+            const question = questions[index];
+            
+            document.getElementById('questionForm').classList.add('editing-mode');
+            document.getElementById('editIndicator').style.display = 'block';
+            document.getElementById('submitQuestionBtn').textContent = 'Update Question';
+            document.getElementById('cancelEditBtn').style.display = 'inline-block';
+            
+            document.getElementById('questionText').value = question.questionText;
+            document.getElementById('questionType').value = question.questionType;
+            
+            if (question.questionType === 'text') {
+                acceptedAnswers = JSON.parse(question.correctAnswer || '[]');
+                displayAcceptedAnswers();
+            } else {
+                const optionsList = document.getElementById('optionsList');
+                optionsList.innerHTML = '';
+                optionCount = 0;
+                
+                question.options.forEach(option => {
+                    optionCount++;
+                    const questionType = question.questionType;
+                    const inputType = questionType === 'mcq' ? 'radio' : 'checkbox';
+                    
+                    const optionDiv = document.createElement('div');
+                    optionDiv.className = 'option-input-wrapper';
+                    optionDiv.innerHTML = `
+                        <input type="text" placeholder="Option ${optionCount}" class="option-text" value="${option.text}" data-option-id="${option._id}">
+                        <label style="display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;">
+                            <input type="${inputType}" name="correctOption" ${option.isCorrect ? 'checked' : ''} style="width: 20px; height: 20px; cursor: pointer;">
+                            <span style="font-size: 12px;">Correct</span>
+                        </label>
+                        <button type="button" class="btn btn-danger" style="padding: 8px 12px;" onclick="this.parentElement.remove()">×</button>
+                    `;
+                    optionsList.appendChild(optionDiv);
+                });
+            }
+            
+            handleQuestionTypeChange();
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        async function updateQuestion() {
+            const questionText = document.getElementById('questionText').value;
+            const questionType = document.getElementById('questionType').value;
+            const question = questions[editingQuestionIndex];
+
+            const formData = new FormData();
+            formData.append('questionText', questionText);
+            formData.append('questionType', questionType);
+
+            if (questionType === 'text') {
+                if (acceptedAnswers.length === 0) {
+                    alert('Please add at least one accepted answer');
+                    return;
+                }
+                formData.append('correctAnswer', JSON.stringify(acceptedAnswers));
+            } else {
+                const options = [];
+                const optionInputs = document.querySelectorAll('.option-text');
+                const correctInputs = document.querySelectorAll('input[name="correctOption"]');
+                
+                optionInputs.forEach((input, index) => {
+                    if (input.value.trim()) {
+                        options.push({
+                            text: input.value.trim(),
+                            isCorrect: correctInputs[index].checked
+                        });
+                    }
+                });
+
+                if (options.length < 2) {
+                    alert('Please add at least 2 options');
+                    return;
+                }
+
+                formData.append('options', JSON.stringify(options));
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/quiz/${currentQuizId}/questions/${question._id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: formData
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    questions[editingQuestionIndex] = data.question;
+                    displayQuestions();
+                    resetQuestionForm();
+                    cancelEdit();
+                    alert('Question updated successfully!');
+                } else {
+                    alert(data.error || 'Error updating question');
+                }
+            } catch (error) {
+                alert('Network error: ' + error.message);
+            }
+        }
+
+        function cancelEdit() {
+            editingQuestionIndex = -1;
+            document.getElementById('questionForm').classList.remove('editing-mode');
+            document.getElementById('editIndicator').style.display = 'none';
+            document.getElementById('submitQuestionBtn').textContent = 'Add Question';
+            document.getElementById('cancelEditBtn').style.display = 'none';
+            resetQuestionForm();
+        }
+
+        async function deleteQuestion(index) {
+            if (!confirm('Are you sure you want to delete this question?')) {
+                return;
+            }
+
+            const question = questions[index];
+
+            try {
+                const response = await fetch(`${API_URL}/quiz/${currentQuizId}/questions/${question._id}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'Authorization': `Bearer ${token}`
+                    }
+                });
+
+                if (response.ok) {
+                    questions.splice(index, 1);
+                    displayQuestions();
+                    alert('Question deleted successfully!');
+                } else {
+                    alert('Error deleting question');
+                }
+            } catch (error) {
+                alert('Network error: ' + error.message);
+            }
+        }
+
+        function displayQuestions() {
+            const list = document.getElementById('questionsList');
+            document.getElementById('questionCount').textContent = questions.length;
+
+            if (questions.length === 0) {
+                list.innerHTML = '<p style="text-align: center; color: #999; padding: 20px;">No questions added yet</p>';
+                return;
+            }
+
+            list.innerHTML = questions.map((q, index) => `
+                <div class="question-item">
+                    <div class="question-header">
+                        <span class="question-text">${index + 1}. ${q.questionText}</span>
+                        <div class="question-actions">
+                            <button class="btn btn-warning" style="padding: 8px 12px;" onclick="editQuestion(${index})">✏️ Edit</button>
+                            <button class="btn btn-danger" style="padding: 8px 12px;" onclick="deleteQuestion(${index})">🗑️</button>
+                        </div>
+                    </div>
+                    <div class="question-meta">Type: ${q.questionType.toUpperCase()} ${q.mediaType !== 'none' ? `| Media: ${q.mediaType}` : ''}</div>
+                    ${q.options && q.options.length > 0 ? `
+                        <div class="option-list">
+                            ${q.options.map(opt => `
+                                <div class="option-item">
+                                    <span>${opt.text}</span>
+                                    ${opt.isCorrect ? '<span class="correct-badge">✓ Correct</span>' : ''}
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : q.correctAnswer ? `
+                        <div class="option-list">
+                            Accepted Answers: ${JSON.parse(q.correctAnswer).map(ans => `<span class="answer-tag">${ans}</span>`).join(' ')}
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+
+        function resetQuestionForm() {
+            document.getElementById('questionText').value = '';
+            document.getElementById('questionType').value = 'mcq';
+            document.getElementById('mediaFile').value = '';
+            document.getElementById('mediaPreview').textContent = '';
+            acceptedAnswers = [];
+            displayAcceptedAnswers();
+            
+            const optionsList = document.getElementById('optionsList');
+            optionsList.innerHTML = '';
+            optionCount = 0;
+            addOption();
+            addOption();
+            
+            handleQuestionTypeChange();
+        }
+
+        function finishQuiz() {
+            if (questions.length === 0) {
+                alert('Please add at least one question');
+                return;
+            }
+
+            document.getElementById('finalQuestionCount').textContent = questions.length;
+            document.getElementById('step2').classList.remove('active');
+            document.getElementById('step3').classList.add('active');
+        }
+
+        function copyShareLink() {
+            const link = document.getElementById('shareableLink').textContent;
+            navigator.clipboard.writeText(link).then(() => {
+                alert('Link copied to clipboard!');
+            });
+        }
+
+        function createAnother() {
+            window.location.reload();
+        }
+    </script>
+</body>
+</html>
