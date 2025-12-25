@@ -689,12 +689,15 @@ async function deleteQuiz(quizId) {
         });
 
         if (response.ok) {
+            // Immediately reload the dashboard to reflect changes
+            await loadDashboard();
             alert('Quiz deleted successfully');
-            loadDashboard();
         } else {
-            alert('Error deleting quiz');
+            const data = await response.json();
+            alert(data.error || 'Error deleting quiz');
         }
     } catch (error) {
+        console.error('Delete error:', error);
         alert('Network error');
     }
 }
