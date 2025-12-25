@@ -266,8 +266,8 @@
             </div>
 
             <div class="form-group">
-                <label>Enter your email to start:</label>
-                <input type="email" id="userEmail" placeholder="your@email.com" required>
+                <label>Enter your name to start:</label>
+                <input type="email" id="userEmail" placeholder="Your Name" required>
             </div>
 
             <div id="errorMessage" class="error-message" style="display: none;"></div>
@@ -311,299 +311,328 @@
 
     <script>
         const API_URL = '/api';
-        let quiz = null;
-        let currentQuestionIndex = 0;
-        let userAnswers = [];
-        let startTime = null;
-        let timerInterval = null;
-        let userIdentifier = null;
+let quiz = null;
+let currentQuestionIndex = 0;
+let userAnswers = [];
+let startTime = null;
+let timerInterval = null;
+let userIdentifier = null;
 
-        async function loadQuiz() {
-            const token = window.location.pathname.split('/').pop();
-            
-            try {
-                const response = await fetch(`${API_URL}/attempt/quiz/${token}`);
-                const data = await response.json();
+async function loadQuiz() {
+    const token = window.location.pathname.split('/').pop();
+    
+    try {
+        const response = await fetch(`${API_URL}/attempt/quiz/${token}`);
+        const data = await response.json();
 
-                if (response.ok) {
-                    quiz = data.quiz;
-                    userAnswers = new Array(quiz.questions.length).fill(null);
-                    displayStartScreen();
-                } else {
-                    document.getElementById('loadingState').innerHTML = `
-                        <h2 style="color: #dc3545;">Error</h2>
-                        <p>${data.error}</p>
-                    `;
-                }
-            } catch (error) {
-                document.getElementById('loadingState').innerHTML = `
-                    <h2 style="color: #dc3545;">Network Error</h2>
-                    <p>Could not load quiz. Please check your connection.</p>
-                `;
-            }
+        if (response.ok) {
+            quiz = data.quiz;
+            userAnswers = new Array(quiz.questions.length).fill(null);
+            displayStartScreen();
+        } else {
+            document.getElementById('loadingState').innerHTML = `
+                <h2 style="color: #dc3545;">Error</h2>
+                <p>${data.error}</p>
+            `;
+        }
+    } catch (error) {
+        document.getElementById('loadingState').innerHTML = `
+            <h2 style="color: #dc3545;">Network Error</h2>
+            <p>Could not load quiz. Please check your connection.</p>
+        `;
+    }
+}
+
+function displayStartScreen() {
+    document.getElementById('loadingState').style.display = 'none';
+    document.getElementById('startScreen').style.display = 'block';
+    
+    document.getElementById('quizTitle').textContent = quiz.title;
+    document.getElementById('timeLimit').textContent = quiz.timeLimit;
+    document.getElementById('questionCount').textContent = quiz.questionCount;
+    document.getElementById('quizDescription').textContent = quiz.description || '';
+}
+
+async function startQuiz() {
+    const email = document.getElementById('userEmail').value.trim();
+    
+    if (!email) {
+        showError('Please enter your email');
+        return;
+    }
+
+    userIdentifier = email;
+
+    try {
+        const response = await fetch(`${API_URL}/attempt/quiz/${window.location.pathname.split('/').pop()}/check`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ userIdentifier })
+        });
+
+        const data = await response.json();
+
+        if (data.hasAttempted) {
+            showError('You have already attempted this quiz. Only one attempt is allowed.');
+            return;
         }
 
-        function displayStartScreen() {
-            document.getElementById('loadingState').style.display = 'none';
-            document.getElementById('startScreen').style.display = 'block';
-            
-            document.getElementById('quizTitle').textContent = quiz.title;
-            document.getElementById('timeLimit').textContent = quiz.timeLimit;
-            document.getElementById('questionCount').textContent = quiz.questionCount;
-            document.getElementById('quizDescription').textContent = quiz.description || '';
+        startTime = new Date().toISOString();
+        document.getElementById('startScreen').style.display = 'none';
+        document.getElementById('quizScreen').style.display = 'block';
+        document.getElementById('timer').style.display = 'block';
+        
+        startTimer();
+        displayQuestion();
+    } catch (error) {
+        showError('Network error. Please try again.');
+    }
+}
+
+function showError(message) {
+    const errorDiv = document.getElementById('errorMessage');
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+}
+
+function startTimer() {
+    const endTime = new Date(startTime).getTime() + (quiz.timeLimit * 60 * 1000);
+    
+    timerInterval = setInterval(() => {
+        const now = new Date().getTime();
+        const remaining = endTime - now;
+
+        if (remaining <= 0) {
+            clearInterval(timerInterval);
+            submitQuiz(true);
+            return;
         }
 
-        async function startQuiz() {
-            const email = document.getElementById('userEmail').value.trim();
-            
-            if (!email) {
-                showError('Please enter your email');
-                return;
-            }
+        const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
 
-            userIdentifier = email;
+        document.getElementById('timeRemaining').textContent = 
+            `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 
-            // Check if already attempted
-            try {
-                const response = await fetch(`${API_URL}/attempt/quiz/${window.location.pathname.split('/').pop()}/check`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ userIdentifier })
-                });
-
-                const data = await response.json();
-
-                if (data.hasAttempted) {
-                    showError('You have already attempted this quiz. Only one attempt is allowed.');
-                    return;
-                }
-
-                // Start quiz
-                startTime = new Date().toISOString();
-                document.getElementById('startScreen').style.display = 'none';
-                document.getElementById('quizScreen').style.display = 'block';
-                document.getElementById('timer').style.display = 'block';
-                
-                startTimer();
-                displayQuestion();
-            } catch (error) {
-                showError('Network error. Please try again.');
-            }
+        if (remaining < 60000) {
+            document.getElementById('timer').classList.add('warning');
         }
+    }, 1000);
+}
 
-        function showError(message) {
-            const errorDiv = document.getElementById('errorMessage');
-            errorDiv.textContent = message;
-            errorDiv.style.display = 'block';
-        }
+function displayQuestion() {
+    const question = quiz.questions[currentQuestionIndex];
+    const container = document.getElementById('questionContainer');
 
-        function startTimer() {
-            const endTime = new Date(startTime).getTime() + (quiz.timeLimit * 60 * 1000);
-            
-            timerInterval = setInterval(() => {
-                const now = new Date().getTime();
-                const remaining = endTime - now;
+    let optionsHtml = '';
 
-                if (remaining <= 0) {
-                    clearInterval(timerInterval);
-                    submitQuiz(true);
-                    return;
-                }
-
-                const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
-                const seconds = Math.floor((remaining % (1000 * 60)) / 1000);
-
-                document.getElementById('timeRemaining').textContent = 
-                    `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
-
-                if (remaining < 60000) {
-                    document.getElementById('timer').classList.add('warning');
-                }
-            }, 1000);
-        }
-
-        function displayQuestion() {
-            const question = quiz.questions[currentQuestionIndex];
-            const container = document.getElementById('questionContainer');
-
-            let optionsHtml = '';
-
-            if (question.questionType === 'text') {
-                optionsHtml = `
-                    <input type="text" class="text-input" id="textAnswer" 
-                           placeholder="Type your answer here"
-                           value="${userAnswers[currentQuestionIndex] || ''}"
-                           onchange="saveTextAnswer(this.value)">
-                `;
-            } else {
-                const inputType = question.questionType === 'mcq' ? 'radio' : 'checkbox';
-                optionsHtml = question.options.map((option, index) => {
-                    const isSelected = userAnswers[currentQuestionIndex]?.includes(option._id);
-                    return `
-                        <div class="option ${isSelected ? 'selected' : ''}" onclick="selectOption('${option._id}', '${question.questionType}')">
-                            <input type="${inputType}" name="answer" value="${option._id}" 
-                                   ${isSelected ? 'checked' : ''}
-                                   onchange="selectOption('${option._id}', '${question.questionType}')">
-                            <span>${option.text}</span>
-                        </div>
-                    `;
-                }).join('');
-            }
-
-            let mediaHtml = '';
-            if (question.mediaUrl) {
-                if (question.mediaType === 'image') {
-                    mediaHtml = `<div class="media-container"><img src="${question.mediaUrl}" alt="Question media"></div>`;
-                } else if (question.mediaType === 'video') {
-                    mediaHtml = `<div class="media-container"><video controls src="${question.mediaUrl}"></video></div>`;
-                } else if (question.mediaType === 'audio') {
-                    mediaHtml = `<div class="media-container"><audio controls src="${question.mediaUrl}"></audio></div>`;
-                }
-            }
-
-            container.innerHTML = `
-                <div class="question-card">
-                    <div class="question-number">Question ${currentQuestionIndex + 1} of ${quiz.questions.length}</div>
-                    <div class="question-text">${question.questionText}</div>
-                    ${mediaHtml}
-                    <div class="options">${optionsHtml}</div>
+    if (question.questionType === 'text') {
+        optionsHtml = `
+            <input type="text" class="text-input" id="textAnswer" 
+                   placeholder="Type your answer here"
+                   value="${userAnswers[currentQuestionIndex] || ''}"
+                   onchange="saveTextAnswer(this.value)">
+        `;
+    } else {
+        const inputType = question.questionType === 'mcq' ? 'radio' : 'checkbox';
+        optionsHtml = question.options.map((option, index) => {
+            const isSelected = userAnswers[currentQuestionIndex]?.includes(option._id);
+            return `
+                <div class="option ${isSelected ? 'selected' : ''}" onclick="selectOption('${option._id}', '${question.questionType}')">
+                    <input type="${inputType}" name="answer" value="${option._id}" 
+                           ${isSelected ? 'checked' : ''}
+                           onchange="selectOption('${option._id}', '${question.questionType}')">
+                    <span>${option.text}</span>
                 </div>
             `;
+        }).join('');
+    }
 
-            updateNavigation();
-            updateProgress();
+    let mediaHtml = '';
+    if (question.mediaUrl) {
+        if (question.mediaType === 'image') {
+            mediaHtml = `<div class="media-container"><img src="${question.mediaUrl}" alt="Question media"></div>`;
+        } else if (question.mediaType === 'video') {
+            mediaHtml = `<div class="media-container"><video controls src="${question.mediaUrl}"></video></div>`;
+        } else if (question.mediaType === 'audio') {
+            mediaHtml = `<div class="media-container"><audio controls src="${question.mediaUrl}"></audio></div>`;
+        }
+    }
+
+    const importantBadge = question.isImportant 
+        ? '<span style="background: #dc3545; color: white; padding: 4px 10px; border-radius: 4px; font-size: 12px; margin-left: 10px; font-weight: bold;">⭐ IMPORTANT</span>' 
+        : '';
+
+    const points = question.points || { correct: 1, wrong: 0, unattempted: 0 };
+    const pointsInfo = points.correct > 1 || points.wrong < 0 || points.unattempted < 0
+        ? `<div style="background: #fff3cd; padding: 8px 12px; border-radius: 5px; margin-top: 10px; font-size: 13px; color: #856404;">
+             <strong>Points:</strong> +${points.correct} for correct, ${points.wrong} for wrong, ${points.unattempted} for unattempted
+           </div>`
+        : '';
+
+    container.innerHTML = `
+        <div class="question-card">
+            <div class="question-number">
+                Question ${currentQuestionIndex + 1} of ${quiz.questions.length}
+                ${importantBadge}
+            </div>
+            <div class="question-text">${question.questionText}</div>
+            ${pointsInfo}
+            ${mediaHtml}
+            <div class="options">${optionsHtml}</div>
+        </div>
+    `;
+
+    updateNavigation();
+    updateProgress();
+}
+
+function selectOption(optionId, questionType) {
+    if (questionType === 'mcq') {
+        userAnswers[currentQuestionIndex] = [optionId];
+    } else {
+        if (!userAnswers[currentQuestionIndex]) {
+            userAnswers[currentQuestionIndex] = [];
+        }
+        
+        const index = userAnswers[currentQuestionIndex].indexOf(optionId);
+        if (index > -1) {
+            userAnswers[currentQuestionIndex].splice(index, 1);
+        } else {
+            userAnswers[currentQuestionIndex].push(optionId);
+        }
+    }
+    displayQuestion();
+}
+
+function saveTextAnswer(value) {
+    userAnswers[currentQuestionIndex] = value;
+}
+
+function updateNavigation() {
+    document.getElementById('prevBtn').style.display = currentQuestionIndex > 0 ? 'block' : 'none';
+    document.getElementById('nextBtn').style.display = currentQuestionIndex < quiz.questions.length - 1 ? 'block' : 'none';
+    document.getElementById('submitBtn').style.display = currentQuestionIndex === quiz.questions.length - 1 ? 'block' : 'none';
+}
+
+function updateProgress() {
+    const progress = ((currentQuestionIndex + 1) / quiz.questions.length) * 100;
+    document.getElementById('progressBar').style.width = progress + '%';
+}
+
+function nextQuestion() {
+    if (currentQuestionIndex < quiz.questions.length - 1) {
+        currentQuestionIndex++;
+        displayQuestion();
+    }
+}
+
+function previousQuestion() {
+    if (currentQuestionIndex > 0) {
+        currentQuestionIndex--;
+        displayQuestion();
+    }
+}
+
+async function submitQuiz(autoSubmit = false) {
+    if (!autoSubmit && !confirm('Are you sure you want to submit? You cannot change your answers after submission.')) {
+        return;
+    }
+
+    clearInterval(timerInterval);
+
+    const responses = quiz.questions.map((question, index) => {
+        const response = {
+            questionId: question._id
+        };
+
+        if (question.questionType === 'text') {
+            response.textAnswer = userAnswers[index] || '';
+        } else {
+            response.selectedOptions = userAnswers[index] || [];
         }
 
-        function selectOption(optionId, questionType) {
-            if (questionType === 'mcq') {
-                userAnswers[currentQuestionIndex] = [optionId];
-            } else {
-                if (!userAnswers[currentQuestionIndex]) {
-                    userAnswers[currentQuestionIndex] = [];
-                }
-                
-                const index = userAnswers[currentQuestionIndex].indexOf(optionId);
-                if (index > -1) {
-                    userAnswers[currentQuestionIndex].splice(index, 1);
-                } else {
-                    userAnswers[currentQuestionIndex].push(optionId);
-                }
-            }
-            displayQuestion();
+        return response;
+    });
+
+    try {
+        const token = window.location.pathname.split('/').pop();
+        const response = await fetch(`${API_URL}/attempt/quiz/${token}/submit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userIdentifier,
+                responses,
+                startedAt: startTime
+            })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            displayResults(data);
+        } else {
+            alert(data.error || 'Error submitting quiz');
         }
+    } catch (error) {
+        alert('Network error. Please try again.');
+    }
+}
 
-        function saveTextAnswer(value) {
-            userAnswers[currentQuestionIndex] = value;
-        }
+function displayResults(data) {
+    document.getElementById('quizScreen').style.display = 'none';
+    document.getElementById('resultsScreen').style.display = 'block';
+    document.getElementById('timer').style.display = 'none';
 
-        function updateNavigation() {
-            document.getElementById('prevBtn').style.display = currentQuestionIndex > 0 ? 'block' : 'none';
-            document.getElementById('nextBtn').style.display = currentQuestionIndex < quiz.questions.length - 1 ? 'block' : 'none';
-            document.getElementById('submitBtn').style.display = currentQuestionIndex === quiz.questions.length - 1 ? 'block' : 'none';
-        }
+    document.getElementById('finalScore').textContent = data.score;
+    document.getElementById('totalQuestions').textContent = data.maxScore;
+    document.getElementById('percentage').textContent = data.percentage;
 
-        function updateProgress() {
-            const progress = ((currentQuestionIndex + 1) / quiz.questions.length) * 100;
-            document.getElementById('progressBar').style.width = progress + '%';
-        }
+    const reviewContainer = document.getElementById('reviewContainer');
+    reviewContainer.innerHTML = data.responses.map((response, index) => {
+        const question = quiz.questions[index];
+        
+        const importantBadge = response.isImportant 
+            ? '<span style="background: #dc3545; color: white; padding: 3px 8px; border-radius: 3px; font-size: 11px; margin-left: 8px; font-weight: bold;">⭐</span>' 
+            : '';
 
-        function nextQuestion() {
-            if (currentQuestionIndex < quiz.questions.length - 1) {
-                currentQuestionIndex++;
-                displayQuestion();
-            }
-        }
+        const statusIcon = response.isCorrect ? '✅' : (response.status === 'unattempted' ? '⚠️' : '❌');
+        const statusText = response.isCorrect ? 'Correct' : (response.status === 'unattempted' ? 'Unattempted' : 'Incorrect');
 
-        function previousQuestion() {
-            if (currentQuestionIndex > 0) {
-                currentQuestionIndex--;
-                displayQuestion();
-            }
-        }
+        const pointsDisplay = `<div style="font-size: 12px; color: #666; margin-top: 8px;">
+            Points earned: <strong style="color: ${response.earnedPoints > 0 ? '#28a745' : response.earnedPoints < 0 ? '#dc3545' : '#666'};">
+                ${response.earnedPoints >= 0 ? '+' : ''}${response.earnedPoints}
+            </strong> / ${response.maxPoints}
+        </div>`;
 
-        async function submitQuiz(autoSubmit = false) {
-            if (!autoSubmit && !confirm('Are you sure you want to submit? You cannot change your answers after submission.')) {
-                return;
-            }
+        return `
+            <div class="review-item ${response.isCorrect ? 'correct' : 'incorrect'}">
+                <div class="review-question">
+                    ${index + 1}. ${question.questionText}
+                    ${importantBadge}
+                    <span style="float: right;">${statusIcon} ${statusText}</span>
+                </div>
+                <div class="review-answer">
+                    Your answer: ${getAnswerText(question, response)}
+                </div>
+                ${pointsDisplay}
+            </div>
+        `;
+    }).join('');
+}
 
-            clearInterval(timerInterval);
+function getAnswerText(question, response) {
+    if (question.questionType === 'text') {
+        return response.textAnswer || '(No answer)';
+    } else {
+        const selectedOptions = question.options.filter(opt => 
+            response.selectedOptions.includes(opt._id)
+        );
+        return selectedOptions.map(opt => opt.text).join(', ') || '(No answer)';
+    }
+}
 
-            const responses = quiz.questions.map((question, index) => {
-                const response = {
-                    questionId: question._id
-                };
-
-                if (question.questionType === 'text') {
-                    response.textAnswer = userAnswers[index] || '';
-                } else {
-                    response.selectedOptions = userAnswers[index] || [];
-                }
-
-                return response;
-            });
-
-            try {
-                const token = window.location.pathname.split('/').pop();
-                const response = await fetch(`${API_URL}/attempt/quiz/${token}/submit`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        userIdentifier,
-                        responses,
-                        startedAt: startTime
-                    })
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    displayResults(data);
-                } else {
-                    alert(data.error || 'Error submitting quiz');
-                }
-            } catch (error) {
-                alert('Network error. Please try again.');
-            }
-        }
-
-        function displayResults(data) {
-            document.getElementById('quizScreen').style.display = 'none';
-            document.getElementById('resultsScreen').style.display = 'block';
-            document.getElementById('timer').style.display = 'none';
-
-            document.getElementById('finalScore').textContent = data.score;
-            document.getElementById('totalQuestions').textContent = data.totalQuestions;
-            document.getElementById('percentage').textContent = data.percentage;
-
-            const reviewContainer = document.getElementById('reviewContainer');
-            reviewContainer.innerHTML = data.responses.map((response, index) => {
-                const question = quiz.questions[index];
-                return `
-                    <div class="review-item ${response.isCorrect ? 'correct' : 'incorrect'}">
-                        <div class="review-question">
-                            ${index + 1}. ${question.questionText}
-                            ${response.isCorrect ? '✅ Correct' : '❌ Incorrect'}
-                        </div>
-                        <div class="review-answer">
-                            Your answer: ${getAnswerText(question, response)}
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        function getAnswerText(question, response) {
-            if (question.questionType === 'text') {
-                return response.textAnswer || '(No answer)';
-            } else {
-                const selectedOptions = question.options.filter(opt => 
-                    response.selectedOptions.includes(opt._id)
-                );
-                return selectedOptions.map(opt => opt.text).join(', ') || '(No answer)';
-            }
-        }
-
-        loadQuiz();
+loadQuiz();
     </script>
 </body>
 </html>
