@@ -631,12 +631,9 @@
         }
 
         async function viewAttemptDetails(attemptId) {
-            try {
-                const response = await fetch(`${API_URL}/attempt/attempt/${attemptId}`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
+    // Navigate to the new view-attempt page
+    window.location.href = `/view-attempt/${attemptId}`;
+}
 
                 const data = await response.json();
                 const attempt = data.attempt;
