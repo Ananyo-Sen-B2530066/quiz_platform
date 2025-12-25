@@ -2,8 +2,17 @@ const mongoose = require('mongoose');
 
 const responseSchema = new mongoose.Schema({
   questionId: { type: mongoose.Schema.Types.ObjectId, required: true },
+  questionText: { type: String },
+  questionType: { type: String },
+  isImportant: { type: Boolean, default: false },
   selectedOptions: [{ type: mongoose.Schema.Types.ObjectId }],
-  textAnswer: { type: String }
+  textAnswer: { type: String },
+  isCorrect: { type: Boolean },
+  status: { type: String, enum: ['correct', 'wrong', 'unattempted'], default: 'unattempted' },
+  earnedPoints: { type: Number, default: 0 },
+  maxPoints: { type: Number, default: 1 },
+  userAnswer: { type: mongoose.Schema.Types.Mixed }, // What user selected
+  correctAnswer: { type: mongoose.Schema.Types.Mixed } // What was correct
 });
 
 const attemptSchema = new mongoose.Schema({
@@ -19,6 +28,7 @@ const attemptSchema = new mongoose.Schema({
   startedAt: { type: Date, default: Date.now },
   submittedAt: { type: Date },
   score: { type: Number },
+  maxScore: { type: Number }, // Maximum possible score
   totalQuestions: { type: Number }
 });
 
