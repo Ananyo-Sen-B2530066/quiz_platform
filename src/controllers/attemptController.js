@@ -24,6 +24,8 @@ exports.getQuizByToken = async (req, res) => {
       questionType: q.questionType,
       mediaUrl: q.mediaUrl,
       mediaType: q.mediaType,
+      isImportant: q.isImportant,
+      points: q.points || { correct: 1, wrong: 0, unattempted: 0 },
       options: q.questionType !== 'text' ? q.options.map(opt => ({
         _id: opt._id,
         text: opt.text
@@ -102,35 +104,103 @@ exports.submitAttempt = async (req, res) => {
       return res.status(400).json({ error: 'Time limit exceeded' });
     }
 
-    // Calculate score
-    let score = 0;
+    // Calculate score with point system
+    let totalScore = 0;
+    let maxScore = 0;
+
     const detailedResponses = responses.map(response => {
       const question = quiz.questions.id(response.questionId);
       if (!question) return response;
 
+      const points = question.points || { correct: 1, wrong: 0, unattempted: 0 };
+      maxScore += points.correct;
+
       let isCorrect = false;
+      let earnedPoints = 0;
+      let correctAnswer = null;
+      let userAnswer = null;
+      let status = 'unattempted';
 
       if (question.questionType === 'text') {
-        isCorrect = response.textAnswer?.toLowerCase().trim() === 
-                    question.correctAnswer?.toLowerCase().trim();
+        // Parse accepted answers if stored as JSON string
+        let acceptedAnswers = [];
+        try {
+          acceptedAnswers = JSON.parse(question.correctAnswer);
+        } catch (e) {
+          acceptedAnswers = [question.correctAnswer];
+        }
+
+        const userTextAnswer = response.textAnswer?.toLowerCase().trim();
+        isCorrect = acceptedAnswers.some(ans => 
+          ans.toLowerCase().trim() === userTextAnswer
+        );
+
+        correctAnswer = acceptedAnswers;
+        userAnswer = response.textAnswer;
+        
+        if (response.textAnswer && response.textAnswer.trim()) {
+          status = isCorrect ? 'correct' : 'wrong';
+          earnedPoints = isCorrect ? points.correct : points.wrong;
+        } else {
+          earnedPoints = points.unattempted;
+        }
+
       } else if (question.questionType === 'mcq') {
-        const selectedOption = question.options.id(response.selectedOptions[0]);
-        isCorrect = selectedOption?.isCorrect || false;
+        if (response.selectedOptions && response.selectedOptions.length > 0) {
+          const selectedOption = question.options.id(response.selectedOptions[0]);
+          isCorrect = selectedOption?.isCorrect || false;
+          status = isCorrect ? 'correct' : 'wrong';
+          earnedPoints = isCorrect ? points.correct : points.wrong;
+
+          // Store what they selected vs what was correct
+          userAnswer = selectedOption ? selectedOption.text : null;
+          const correctOption = question.options.find(opt => opt.isCorrect);
+          correctAnswer = correctOption ? correctOption.text : null;
+        } else {
+          earnedPoints = points.unattempted;
+        }
+
       } else if (question.questionType === 'msq') {
         const correctOptionIds = question.options
           .filter(opt => opt.isCorrect)
           .map(opt => opt._id.toString());
-        const selectedOptionIds = response.selectedOptions.map(id => id.toString());
         
-        isCorrect = correctOptionIds.length === selectedOptionIds.length &&
-                    correctOptionIds.every(id => selectedOptionIds.includes(id));
+        if (response.selectedOptions && response.selectedOptions.length > 0) {
+          const selectedOptionIds = response.selectedOptions.map(id => id.toString());
+          
+          isCorrect = correctOptionIds.length === selectedOptionIds.length &&
+                      correctOptionIds.every(id => selectedOptionIds.includes(id));
+          
+          status = isCorrect ? 'correct' : 'wrong';
+          earnedPoints = isCorrect ? points.correct : points.wrong;
+
+          // Store what they selected vs what was correct
+          userAnswer = question.options
+            .filter(opt => selectedOptionIds.includes(opt._id.toString()))
+            .map(opt => opt.text);
+          correctAnswer = question.options
+            .filter(opt => opt.isCorrect)
+            .map(opt => opt.text);
+        } else {
+          earnedPoints = points.unattempted;
+        }
       }
 
-      if (isCorrect) score++;
+      totalScore += earnedPoints;
 
       return {
-        ...response,
-        isCorrect
+        questionId: response.questionId,
+        questionText: question.questionText,
+        questionType: question.questionType,
+        isImportant: question.isImportant,
+        selectedOptions: response.selectedOptions,
+        textAnswer: response.textAnswer,
+        isCorrect,
+        status,
+        earnedPoints,
+        maxPoints: points.correct,
+        userAnswer,
+        correctAnswer
       };
     });
 
@@ -143,7 +213,8 @@ exports.submitAttempt = async (req, res) => {
       responses: detailedResponses,
       startedAt: new Date(startedAt),
       submittedAt: new Date(),
-      score,
+      score: totalScore,
+      maxScore: maxScore,
       totalQuestions: quiz.questions.length
     });
 
@@ -151,9 +222,10 @@ exports.submitAttempt = async (req, res) => {
 
     res.json({
       message: 'Quiz submitted successfully',
-      score,
+      score: totalScore,
+      maxScore: maxScore,
       totalQuestions: quiz.questions.length,
-      percentage: ((score / quiz.questions.length) * 100).toFixed(2),
+      percentage: maxScore > 0 ? ((totalScore / maxScore) * 100).toFixed(2) : 0,
       responses: detailedResponses
     });
   } catch (error) {
@@ -173,7 +245,7 @@ exports.getQuizAttempts = async (req, res) => {
     }
 
     const attempts = await Attempt.find({ quizId })
-      .select('userIdentifier score totalQuestions submittedAt')
+      .select('userIdentifier score maxScore totalQuestions submittedAt responses')
       .sort({ submittedAt: -1 });
 
     const summary = {
@@ -181,12 +253,18 @@ exports.getQuizAttempts = async (req, res) => {
       averageScore: attempts.length > 0 
         ? (attempts.reduce((sum, a) => sum + a.score, 0) / attempts.length).toFixed(2)
         : 0,
+      averagePercentage: attempts.length > 0
+        ? (attempts.reduce((sum, a) => sum + (a.maxScore > 0 ? (a.score / a.maxScore) * 100 : 0), 0) / attempts.length).toFixed(2)
+        : 0,
       attempts: attempts.map(a => ({
+        id: a._id,
         userIdentifier: a.userIdentifier,
         score: a.score,
+        maxScore: a.maxScore,
         totalQuestions: a.totalQuestions,
-        percentage: ((a.score / a.totalQuestions) * 100).toFixed(2),
-        submittedAt: a.submittedAt
+        percentage: a.maxScore > 0 ? ((a.score / a.maxScore) * 100).toFixed(2) : 0,
+        submittedAt: a.submittedAt,
+        responses: a.responses // Include detailed responses
       }))
     };
 
@@ -194,5 +272,44 @@ exports.getQuizAttempts = async (req, res) => {
   } catch (error) {
     console.error('Get attempts error:', error);
     res.status(500).json({ error: 'Server error while fetching attempts' });
+  }
+};
+
+// Get single attempt details (creator only)
+exports.getAttemptDetails = async (req, res) => {
+  try {
+    const { attemptId } = req.params;
+
+    const attempt = await Attempt.findById(attemptId).populate('quizId');
+    
+    if (!attempt) {
+      return res.status(404).json({ error: 'Attempt not found' });
+    }
+
+    // Verify the quiz belongs to the requesting user
+    const quiz = await Quiz.findOne({ _id: attempt.quizId, creatorId: req.userId });
+    if (!quiz) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    res.json({
+      attempt: {
+        id: attempt._id,
+        userIdentifier: attempt.userIdentifier,
+        score: attempt.score,
+        maxScore: attempt.maxScore,
+        totalQuestions: attempt.totalQuestions,
+        percentage: attempt.maxScore > 0 ? ((attempt.score / attempt.maxScore) * 100).toFixed(2) : 0,
+        submittedAt: attempt.submittedAt,
+        responses: attempt.responses
+      },
+      quiz: {
+        title: quiz.title,
+        description: quiz.description
+      }
+    });
+  } catch (error) {
+    console.error('Get attempt details error:', error);
+    res.status(500).json({ error: 'Server error while fetching attempt details' });
   }
 };
