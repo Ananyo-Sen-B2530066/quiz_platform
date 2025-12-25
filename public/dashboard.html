@@ -496,286 +496,225 @@
     </div>
 
     <script>
-        const API_URL = '/api';
-        let token = localStorage.getItem('token');
-        let currentQuizIdForResults = null;
+        // COMPLETE <script> section for dashboard.html
+// Replace everything between <script> and </script> with this:
 
-        if (!token) {
-            window.location.href = '/';
-        }
+const API_URL = '/api';
+let token = localStorage.getItem('token');
+let currentQuizIdForResults = null;
 
-        // Load user profile and quizzes
-        async function loadDashboard() {
-            try {
-                // Load user profile
-                const userResponse = await fetch(`${API_URL}/auth/profile`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
+if (!token) {
+    window.location.href = '/';
+}
 
-                if (userResponse.ok) {
-                    const userData = await userResponse.json();
-                    document.getElementById('userName').textContent = `Hello, ${userData.user.name}`;
-                } else {
-                    logout();
-                    return;
-                }
-
-                // Load quizzes
-                const quizzesResponse = await fetch(`${API_URL}/quiz`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-
-                const quizzesData = await quizzesResponse.json();
-
-                if (quizzesData.quizzes && quizzesData.quizzes.length > 0) {
-                    displayQuizzes(quizzesData.quizzes);
-                } else {
-                    document.getElementById('emptyState').style.display = 'block';
-                }
-            } catch (error) {
-                console.error('Error loading dashboard:', error);
-                alert('Error loading dashboard');
+// Load user profile and quizzes
+async function loadDashboard() {
+    try {
+        // Load user profile
+        const userResponse = await fetch(`${API_URL}/auth/profile`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
             }
+        });
+
+        if (userResponse.ok) {
+            const userData = await userResponse.json();
+            document.getElementById('userName').textContent = `Hello, ${userData.user.name}`;
+        } else {
+            logout();
+            return;
         }
 
-        function displayQuizzes(quizzes) {
-            const grid = document.getElementById('quizGrid');
-            grid.innerHTML = quizzes.map(quiz => `
-                <div class="quiz-card">
-                    <div class="quiz-title">${quiz.title}</div>
-                    <div class="quiz-description">${quiz.description || 'No description'}</div>
-                    <div class="quiz-meta">
-                        <span>⏱️ ${quiz.timeLimit} min</span>
-                        <span>❓ ${quiz.questionCount} questions</span>
-                        <span>${quiz.isLocked ? '<span class="locked-badge">🔒 Locked</span>' : '<span class="unlocked-badge">🔓 Active</span>'}</span>
-                    </div>
-                    <div class="quiz-link">
-                        <span style="flex: 1; overflow: hidden; text-overflow: ellipsis;">${quiz.shareableLink}</span>
-                        <button class="copy-btn" onclick="copyLink('${quiz.shareableLink}')">Copy</button>
-                    </div>
-                    <div class="quiz-actions">
-                        <button class="btn btn-primary" onclick="viewResults('${quiz.id}', '${quiz.title}')">📊 Results</button>
-                        <button class="btn btn-warning" onclick="toggleLock('${quiz.id}', ${quiz.isLocked})">
-                            ${quiz.isLocked ? '🔓 Unlock' : '🔒 Lock'}
-                        </button>
-                        <button class="btn btn-danger" onclick="deleteQuiz('${quiz.id}')">🗑️ Delete</button>
-                    </div>
-                </div>
-            `).join('');
-        }
-
-        function copyLink(link) {
-            navigator.clipboard.writeText(link).then(() => {
-                alert('Link copied to clipboard!');
-            });
-        }
-
-        async function viewResults(quizId, quizTitle) {
-            currentQuizIdForResults = quizId;
-            document.getElementById('resultsQuizTitle').textContent = `${quizTitle} - Results`;
-            document.getElementById('resultsModal').classList.add('active');
-
-            try {
-                const response = await fetch(`${API_URL}/attempt/results/${quizId}`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-
-                const data = await response.json();
-
-                document.getElementById('totalAttempts').textContent = data.totalAttempts;
-                document.getElementById('avgScore').textContent = data.averageScore;
-                document.getElementById('avgPercentage').textContent = `${data.averagePercentage}%`;
-
-                displayAttempts(data.attempts);
-            } catch (error) {
-                console.error('Error loading results:', error);
-                alert('Error loading results');
+        // Load quizzes
+        const quizzesResponse = await fetch(`${API_URL}/quiz`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
             }
-        }
+        });
 
-        function displayAttempts(attempts) {
-            const tbody = document.getElementById('attemptsTableBody');
-            
-            if (attempts.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px; color: #999;">No attempts yet</td></tr>';
-                return;
+        const quizzesData = await quizzesResponse.json();
+
+        if (quizzesData.quizzes && quizzesData.quizzes.length > 0) {
+            displayQuizzes(quizzesData.quizzes);
+        } else {
+            document.getElementById('emptyState').style.display = 'block';
+        }
+    } catch (error) {
+        console.error('Error loading dashboard:', error);
+        alert('Error loading dashboard');
+    }
+}
+
+function displayQuizzes(quizzes) {
+    const grid = document.getElementById('quizGrid');
+    grid.innerHTML = quizzes.map(quiz => `
+        <div class="quiz-card">
+            <div class="quiz-title">${quiz.title}</div>
+            <div class="quiz-description">${quiz.description || 'No description'}</div>
+            <div class="quiz-meta">
+                <span>⏱️ ${quiz.timeLimit} min</span>
+                <span>❓ ${quiz.questionCount} questions</span>
+                <span>${quiz.isLocked ? '<span class="locked-badge">🔒 Locked</span>' : '<span class="unlocked-badge">🔓 Active</span>'}</span>
+            </div>
+            <div class="quiz-link">
+                <span style="flex: 1; overflow: hidden; text-overflow: ellipsis;">${quiz.shareableLink}</span>
+                <button class="copy-btn" onclick="copyLink('${quiz.shareableLink}')">Copy</button>
+            </div>
+            <div class="quiz-actions">
+                <button class="btn btn-primary" onclick="viewResults('${quiz.id}', '${quiz.title}')">📊 Results</button>
+                <button class="btn btn-warning" onclick="toggleLock('${quiz.id}', ${quiz.isLocked})">
+                    ${quiz.isLocked ? '🔓 Unlock' : '🔒 Lock'}
+                </button>
+                <button class="btn btn-danger" onclick="deleteQuiz('${quiz.id}')">🗑️ Delete</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+function copyLink(link) {
+    navigator.clipboard.writeText(link).then(() => {
+        alert('Link copied to clipboard!');
+    });
+}
+
+async function viewResults(quizId, quizTitle) {
+    currentQuizIdForResults = quizId;
+    document.getElementById('resultsQuizTitle').textContent = `${quizTitle} - Results`;
+    document.getElementById('resultsModal').classList.add('active');
+
+    try {
+        const response = await fetch(`${API_URL}/attempt/results/${quizId}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
             }
+        });
 
-            tbody.innerHTML = attempts.map(attempt => {
-                const percentage = parseFloat(attempt.percentage);
-                let scoreClass = 'score-poor';
-                if (percentage >= 80) scoreClass = 'score-excellent';
-                else if (percentage >= 60) scoreClass = 'score-good';
-                else if (percentage >= 40) scoreClass = 'score-average';
+        const data = await response.json();
 
-                return `
-                    <tr>
-                        <td>${attempt.userIdentifier}</td>
-                        <td>${attempt.score} / ${attempt.maxScore}</td>
-                        <td><span class="score-badge ${scoreClass}">${attempt.percentage}%</span></td>
-                        <td>${new Date(attempt.submittedAt).toLocaleString()}</td>
-                        <td>
-                            <button class="view-details-btn" onclick="viewAttemptDetails('${attempt.id}')">
-                                👁️ View Details
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        }
+        document.getElementById('totalAttempts').textContent = data.totalAttempts;
+        document.getElementById('avgScore').textContent = data.averageScore;
+        document.getElementById('avgPercentage').textContent = `${data.averagePercentage}%`;
 
-        async function viewAttemptDetails(attemptId) {
+        displayAttempts(data.attempts);
+    } catch (error) {
+        console.error('Error loading results:', error);
+        alert('Error loading results');
+    }
+}
+
+function displayAttempts(attempts) {
+    const tbody = document.getElementById('attemptsTableBody');
+    
+    if (attempts.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="text-align: center; padding: 20px; color: #999;">No attempts yet</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = attempts.map(attempt => {
+        const percentage = parseFloat(attempt.percentage);
+        let scoreClass = 'score-poor';
+        if (percentage >= 80) scoreClass = 'score-excellent';
+        else if (percentage >= 60) scoreClass = 'score-good';
+        else if (percentage >= 40) scoreClass = 'score-average';
+
+        return `
+            <tr>
+                <td>${attempt.userIdentifier}</td>
+                <td>${attempt.score} / ${attempt.maxScore}</td>
+                <td><span class="score-badge ${scoreClass}">${attempt.percentage}%</span></td>
+                <td>${new Date(attempt.submittedAt).toLocaleString()}</td>
+                <td>
+                    <button class="view-details-btn" onclick="viewAttemptDetails('${attempt.id}')">
+                        👁️ View Details
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+async function viewAttemptDetails(attemptId) {
     // Navigate to the new view-attempt page
     window.location.href = `/view-attempt/${attemptId}`;
 }
 
-                const data = await response.json();
-                const attempt = data.attempt;
+function closeResultsModal() {
+    document.getElementById('resultsModal').classList.remove('active');
+}
 
-                document.getElementById('attemptUserInfo').textContent = 
-                    `${attempt.userIdentifier} - Submitted: ${new Date(attempt.submittedAt).toLocaleString()}`;
-                document.getElementById('detailScore').textContent = attempt.score;
-                document.getElementById('detailMaxScore').textContent = attempt.maxScore;
-                document.getElementById('detailPercentage').textContent = `${attempt.percentage}%`;
+function closeAttemptDetailsModal() {
+    document.getElementById('attemptDetailsModal').classList.remove('active');
+}
 
-                displayQuestionReview(attempt.responses);
-                document.getElementById('attemptDetailsModal').classList.add('active');
-            } catch (error) {
-                console.error('Error loading attempt details:', error);
-                alert('Error loading attempt details');
+// Close modals when clicking outside
+window.onclick = function(event) {
+    const resultsModal = document.getElementById('resultsModal');
+    const detailsModal = document.getElementById('attemptDetailsModal');
+    if (event.target === resultsModal) {
+        closeResultsModal();
+    }
+    if (event.target === detailsModal) {
+        closeAttemptDetailsModal();
+    }
+}
+
+async function toggleLock(quizId, isLocked) {
+    const action = isLocked ? 'unlock' : 'lock';
+    if (!confirm(`Are you sure you want to ${action} this quiz?`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/quiz/${quizId}/lock`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `Bearer ${token}`
             }
+        });
+
+        if (response.ok) {
+            alert(`Quiz ${action}ed successfully`);
+            loadDashboard();
+        } else {
+            alert(`Error ${action}ing quiz`);
         }
+    } catch (error) {
+        alert('Network error');
+    }
+}
 
-        function displayQuestionReview(responses) {
-            const container = document.getElementById('questionReview');
-            
-            container.innerHTML = responses.map((response, index) => {
-                const statusClass = response.status || 'unattempted';
-                let userAnswerHTML = '';
-                let correctAnswerHTML = '';
+async function deleteQuiz(quizId) {
+    if (!confirm('Are you sure you want to delete this quiz? This cannot be undone!')) {
+        return;
+    }
 
-                if (response.questionType === 'text') {
-                    userAnswerHTML = `<div class="user-answer"><strong>Your answer:</strong> ${response.textAnswer || 'Not answered'}</div>`;
-                    correctAnswerHTML = `<div class="correct-answer"><strong>Correct answer(s):</strong> ${Array.isArray(response.correctAnswer) ? response.correctAnswer.join(', ') : response.correctAnswer}</div>`;
-                } else if (response.questionType === 'mcq') {
-                    userAnswerHTML = `<div class="user-answer"><strong>Your answer:</strong> ${response.userAnswer || 'Not answered'}</div>`;
-                    if (!response.isCorrect) {
-                        correctAnswerHTML = `<div class="correct-answer"><strong>Correct answer:</strong> ${response.correctAnswer}</div>`;
-                    }
-                } else if (response.questionType === 'msq') {
-                    const userAnswers = Array.isArray(response.userAnswer) ? response.userAnswer.join(', ') : 'Not answered';
-                    userAnswerHTML = `<div class="user-answer"><strong>Your answers:</strong> ${userAnswers}</div>`;
-                    if (!response.isCorrect) {
-                        const correctAnswers = Array.isArray(response.correctAnswer) ? response.correctAnswer.join(', ') : response.correctAnswer;
-                        correctAnswerHTML = `<div class="correct-answer"><strong>Correct answers:</strong> ${correctAnswers}</div>`;
-                    }
-                }
-
-                return `
-                    <div class="question-result ${statusClass}">
-                        <div class="question-result-header">
-                            <div class="question-result-text">
-                                ${index + 1}. ${response.questionText}
-                                ${response.isImportant ? '<span class="important-indicator">⭐ IMPORTANT</span>' : ''}
-                            </div>
-                            <span class="result-badge ${statusClass}">
-                                ${statusClass === 'correct' ? '✓ Correct' : statusClass === 'wrong' ? '✗ Wrong' : '− Unattempted'}
-                            </span>
-                        </div>
-                        <div class="answer-section">
-                            ${userAnswerHTML}
-                            ${correctAnswerHTML}
-                        </div>
-                        <div class="points-earned">
-                            Points: ${response.earnedPoints} / ${response.maxPoints}
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        function closeResultsModal() {
-            document.getElementById('resultsModal').classList.remove('active');
-        }
-
-        function closeAttemptDetailsModal() {
-            document.getElementById('attemptDetailsModal').classList.remove('active');
-        }
-
-        // Close modals when clicking outside
-        window.onclick = function(event) {
-            const resultsModal = document.getElementById('resultsModal');
-            const detailsModal = document.getElementById('attemptDetailsModal');
-            if (event.target === resultsModal) {
-                closeResultsModal();
+    try {
+        const response = await fetch(`${API_URL}/quiz/${quizId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`
             }
-            if (event.target === detailsModal) {
-                closeAttemptDetailsModal();
-            }
+        });
+
+        if (response.ok) {
+            alert('Quiz deleted successfully');
+            loadDashboard();
+        } else {
+            alert('Error deleting quiz');
         }
+    } catch (error) {
+        alert('Network error');
+    }
+}
 
-        async function toggleLock(quizId, isLocked) {
-            const action = isLocked ? 'unlock' : 'lock';
-            if (!confirm(`Are you sure you want to ${action} this quiz?`)) {
-                return;
-            }
+function logout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    window.location.href = '/';
+}
 
-            try {
-                const response = await fetch(`${API_URL}/quiz/${quizId}/lock`, {
-                    method: 'PATCH',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-
-                if (response.ok) {
-                    alert(`Quiz ${action}ed successfully`);
-                    loadDashboard();
-                } else {
-                    alert(`Error ${action}ing quiz`);
-                }
-            } catch (error) {
-                alert('Network error');
-            }
-        }
-
-        async function deleteQuiz(quizId) {
-            if (!confirm('Are you sure you want to delete this quiz? This cannot be undone!')) {
-                return;
-            }
-
-            try {
-                const response = await fetch(`${API_URL}/quiz/${quizId}`, {
-                    method: 'DELETE',
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-
-                if (response.ok) {
-                    alert('Quiz deleted successfully');
-                    loadDashboard();
-                } else {
-                    alert('Error deleting quiz');
-                }
-            } catch (error) {
-                alert('Network error');
-            }
-        }
-
-        function logout() {
-            localStorage.removeItem('token');
-            window.location.href = '/';
-        }
-
-        // Load dashboard on page load
-        loadDashboard();
+// Load dashboard on page load
+loadDashboard();
     </script>
 </body>
 </html>
