@@ -45,6 +45,10 @@ app.get('/quiz/:token', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/take-quiz.html'));
 });
 
+app.get('/view-attempt/:attemptId', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/view-attempt.html'));
+});
+
 // Health check endpoint for deployment platforms
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
