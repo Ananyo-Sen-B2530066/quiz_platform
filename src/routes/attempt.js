@@ -10,5 +10,6 @@ router.post('/quiz/:token/submit', attemptController.submitAttempt);
 
 // Protected routes (for quiz creators)
 router.get('/results/:quizId', auth, attemptController.getQuizAttempts);
+router.get('/attempt/:attemptId', auth, attemptController.getAttemptDetails);
 
 module.exports = router;
