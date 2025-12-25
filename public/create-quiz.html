@@ -331,9 +331,6 @@
                 ✏️ EDITING MODE - Update the question below
             </div>
 
-            <!-- INSTRUCTIONS: Replace the questionForm section in your create-quiz.html -->
-<!-- Find the form with id="questionForm" and replace it with this updated version -->
-
 <form id="questionForm" class="card" style="box-shadow: none; border: 2px solid #ddd;">
     <div class="form-group">
         <label>Question Text *</label>
@@ -382,13 +379,18 @@
     </div>
 
     <div class="form-group">
-        <label>Add Media (Optional)</label>
+    <label>Add Media (Optional)</label>
+    <div style="display: flex; gap: 10px; align-items: center;">
         <div class="file-input-wrapper">
             <label for="mediaFile" class="file-input-label">📎 Choose Image/Video/Audio</label>
             <input type="file" id="mediaFile" accept="image/*,video/*,audio/*">
         </div>
-        <div id="mediaPreview" style="margin-top: 10px; color: #666;"></div>
+        <button type="button" class="btn btn-danger" onclick="clearMediaUpload()" id="clearMediaBtn" style="display: none; padding: 8px 12px;">
+            🗑️ Clear
+        </button>
     </div>
+    <div id="mediaPreview" style="margin-top: 10px; color: #666;"></div>
+</div>
 
     <div id="optionsContainer" class="form-group">
         <label>Answer Options *</label>
@@ -444,178 +446,178 @@
 
     <script>
         const API_URL = '/api';
-        let token = localStorage.getItem('token');
-        let currentQuizId = null;
-        let questions = [];
-        let optionCount = 0;
-        let acceptedAnswers = [];
-        let editingQuestionIndex = -1;
+let token = localStorage.getItem('token');
+let currentQuizId = null;
+let questions = [];
+let optionCount = 0;
+let acceptedAnswers = [];
+let editingQuestionIndex = -1;
 
-        if (!token) {
-            window.location.href = '/';
-        }
+if (!token) {
+    window.location.href = '/';
+}
 
-        // Initialize with 2 options
-        setTimeout(() => {
-            addOption();
-            addOption();
-        }, 100);
+setTimeout(() => {
+    addOption();
+    addOption();
+}, 100);
 
-        document.getElementById('quizDetailsForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            await createQuiz();
+document.getElementById('quizDetailsForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await createQuiz();
+});
+
+document.getElementById('questionForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (editingQuestionIndex >= 0) {
+        await updateQuestion();
+    } else {
+        await addQuestion();
+    }
+});
+
+document.getElementById('mediaFile').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+        document.getElementById('mediaPreview').textContent = `Selected: ${file.name}`;
+        document.getElementById('clearMediaBtn').style.display = 'inline-block';
+    } else {
+        document.getElementById('mediaPreview').textContent = '';
+        document.getElementById('clearMediaBtn').style.display = 'none';
+    }
+});
+
+document.getElementById('newAnswer').addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        addAcceptedAnswer();
+    }
+});
+
+async function createQuiz() {
+    const title = document.getElementById('quizTitle').value;
+    const description = document.getElementById('quizDescription').value;
+    const timeLimit = document.getElementById('quizTimeLimit').value;
+
+    try {
+        const response = await fetch(`${API_URL}/quiz`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ title, description, timeLimit })
         });
 
-        document.getElementById('questionForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            if (editingQuestionIndex >= 0) {
-                await updateQuestion();
-            } else {
-                await addQuestion();
-            }
-        });
-
-        document.getElementById('mediaFile').addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                document.getElementById('mediaPreview').textContent = `Selected: ${file.name}`;
-            }
-        });
-
-        document.getElementById('newAnswer').addEventListener('keypress', (e) => {
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                addAcceptedAnswer();
-            }
-        });
-
-        async function createQuiz() {
-            const title = document.getElementById('quizTitle').value;
-            const description = document.getElementById('quizDescription').value;
-            const timeLimit = document.getElementById('quizTimeLimit').value;
-
-            try {
-                const response = await fetch(`${API_URL}/quiz`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({ title, description, timeLimit })
-                });
-
-                const data = await response.json();
-                
-                if (response.ok) {
-                    currentQuizId = data.quiz.id;
-                    document.getElementById('displayQuizTitle').textContent = title;
-                    document.getElementById('finalQuizTitle').textContent = title;
-                    document.getElementById('shareableLink').textContent = data.quiz.shareableLink;
-                    
-                    document.getElementById('step1').classList.remove('active');
-                    document.getElementById('step2').classList.add('active');
-                } else {
-                    alert(data.error || 'Error creating quiz');
-                }
-            } catch (error) {
-                alert('Network error: ' + error.message);
-            }
-        }
-
-        function handleQuestionTypeChange() {
-            const type = document.getElementById('questionType').value;
-            const optionsContainer = document.getElementById('optionsContainer');
-            const textAnswerContainer = document.getElementById('textAnswerContainer');
-            const optionTypeInfo = document.getElementById('optionTypeInfo');
-
-            if (type === 'text') {
-                optionsContainer.style.display = 'none';
-                textAnswerContainer.style.display = 'block';
-            } else {
-                optionsContainer.style.display = 'block';
-                textAnswerContainer.style.display = 'none';
-                
-                if (type === 'mcq') {
-                    optionTypeInfo.textContent = 'Select ONE correct answer (radio buttons)';
-                    updateOptionInputTypes('radio');
-                } else {
-                    optionTypeInfo.textContent = 'Select MULTIPLE correct answers (checkboxes)';
-                    updateOptionInputTypes('checkbox');
-                }
-            }
-        }
-
-        function updateOptionInputTypes(type) {
-            const optionsList = document.getElementById('optionsList');
-            const inputs = optionsList.querySelectorAll('input[type="radio"], input[type="checkbox"]');
-            inputs.forEach(input => {
-                const isChecked = input.checked;
-                const newInput = document.createElement('input');
-                newInput.type = type;
-                newInput.name = 'correctOption';
-                newInput.checked = isChecked;
-                newInput.style.width = '20px';
-                newInput.style.height = '20px';
-                newInput.style.cursor = 'pointer';
-                input.parentNode.replaceChild(newInput, input);
-            });
-        }
-
-        function addOption() {
-            optionCount++;
-            const questionType = document.getElementById('questionType').value;
-            const inputType = questionType === 'mcq' ? 'radio' : 'checkbox';
+        const data = await response.json();
+        
+        if (response.ok) {
+            currentQuizId = data.quiz.id;
+            document.getElementById('displayQuizTitle').textContent = title;
+            document.getElementById('finalQuizTitle').textContent = title;
+            document.getElementById('shareableLink').textContent = data.quiz.shareableLink;
             
-            const optionsList = document.getElementById('optionsList');
-            const optionDiv = document.createElement('div');
-            optionDiv.className = 'option-input-wrapper';
-            optionDiv.innerHTML = `
-                <input type="text" placeholder="Option ${optionCount}" class="option-text" data-option-id="${optionCount}">
-                <label style="display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;">
-                    <input type="${inputType}" name="correctOption" style="width: 20px; height: 20px; cursor: pointer;">
-                    <span style="font-size: 12px;">Correct</span>
-                </label>
-                <button type="button" class="btn btn-danger" style="padding: 8px 12px;" onclick="this.parentElement.remove()">×</button>
-            `;
-            optionsList.appendChild(optionDiv);
+            document.getElementById('step1').classList.remove('active');
+            document.getElementById('step2').classList.add('active');
+        } else {
+            alert(data.error || 'Error creating quiz');
         }
+    } catch (error) {
+        alert('Network error: ' + error.message);
+    }
+}
 
-        function addAcceptedAnswer() {
-            const input = document.getElementById('newAnswer');
-            const answer = input.value.trim();
-            
-            if (!answer) {
-                alert('Please enter an answer');
-                return;
-            }
-            
-            if (acceptedAnswers.includes(answer)) {
-                alert('This answer already exists');
-                return;
-            }
-            
-            acceptedAnswers.push(answer);
-            input.value = '';
-            displayAcceptedAnswers();
+function handleQuestionTypeChange() {
+    const type = document.getElementById('questionType').value;
+    const optionsContainer = document.getElementById('optionsContainer');
+    const textAnswerContainer = document.getElementById('textAnswerContainer');
+    const optionTypeInfo = document.getElementById('optionTypeInfo');
+
+    if (type === 'text') {
+        optionsContainer.style.display = 'none';
+        textAnswerContainer.style.display = 'block';
+    } else {
+        optionsContainer.style.display = 'block';
+        textAnswerContainer.style.display = 'none';
+        
+        if (type === 'mcq') {
+            optionTypeInfo.textContent = 'Select ONE correct answer (radio buttons)';
+            updateOptionInputTypes('radio');
+        } else {
+            optionTypeInfo.textContent = 'Select MULTIPLE correct answers (checkboxes)';
+            updateOptionInputTypes('checkbox');
         }
+    }
+}
 
-        function displayAcceptedAnswers() {
-            const container = document.getElementById('acceptedAnswersList');
-            container.innerHTML = acceptedAnswers.map((answer, index) => `
-                <span class="answer-tag">
-                    ${answer}
-                    <button type="button" onclick="removeAcceptedAnswer(${index})">×</button>
-                </span>
-            `).join('');
-        }
+function updateOptionInputTypes(type) {
+    const optionsList = document.getElementById('optionsList');
+    const inputs = optionsList.querySelectorAll('input[type="radio"], input[type="checkbox"]');
+    inputs.forEach(input => {
+        const isChecked = input.checked;
+        const newInput = document.createElement('input');
+        newInput.type = type;
+        newInput.name = 'correctOption';
+        newInput.checked = isChecked;
+        newInput.style.width = '20px';
+        newInput.style.height = '20px';
+        newInput.style.cursor = 'pointer';
+        input.parentNode.replaceChild(newInput, input);
+    });
+}
 
-        function removeAcceptedAnswer(index) {
-            acceptedAnswers.splice(index, 1);
-            displayAcceptedAnswers();
-        }
+function addOption() {
+    optionCount++;
+    const questionType = document.getElementById('questionType').value;
+    const inputType = questionType === 'mcq' ? 'radio' : 'checkbox';
+    
+    const optionsList = document.getElementById('optionsList');
+    const optionDiv = document.createElement('div');
+    optionDiv.className = 'option-input-wrapper';
+    optionDiv.innerHTML = `
+        <input type="text" placeholder="Option ${optionCount}" class="option-text" data-option-id="${optionCount}">
+        <label style="display: flex; align-items: center; gap: 5px; margin: 0; cursor: pointer;">
+            <input type="${inputType}" name="correctOption" style="width: 20px; height: 20px; cursor: pointer;">
+            <span style="font-size: 12px;">Correct</span>
+        </label>
+        <button type="button" class="btn btn-danger" style="padding: 8px 12px;" onclick="this.parentElement.remove()">×</button>
+    `;
+    optionsList.appendChild(optionDiv);
+}
 
-        // INSTRUCTIONS: Add these updated functions to your create-quiz.html <script> section
-// Replace the existing addQuestion, editQuestion, updateQuestion, and displayQuestions functions
+function addAcceptedAnswer() {
+    const input = document.getElementById('newAnswer');
+    const answer = input.value.trim();
+    
+    if (!answer) {
+        alert('Please enter an answer');
+        return;
+    }
+    
+    if (acceptedAnswers.includes(answer)) {
+        alert('This answer already exists');
+        return;
+    }
+    
+    acceptedAnswers.push(answer);
+    input.value = '';
+    displayAcceptedAnswers();
+}
+
+function displayAcceptedAnswers() {
+    const container = document.getElementById('acceptedAnswersList');
+    container.innerHTML = acceptedAnswers.map((answer, index) => `
+        <span class="answer-tag">
+            ${answer}
+            <button type="button" onclick="removeAcceptedAnswer(${index})">×</button>
+        </span>
+    `).join('');
+}
+
+function removeAcceptedAnswer(index) {
+    acceptedAnswers.splice(index, 1);
+    displayAcceptedAnswers();
+}
 
 async function addQuestion() {
     const questionText = document.getElementById('questionText').value;
@@ -711,7 +713,6 @@ function editQuestion(index) {
     document.getElementById('questionType').value = question.questionType;
     document.getElementById('isImportant').checked = question.isImportant || false;
     
-    // Set point values
     const points = question.points || { correct: 1, wrong: 0, unattempted: 0 };
     document.getElementById('pointsCorrect').value = points.correct;
     document.getElementById('pointsWrong').value = points.wrong;
@@ -746,6 +747,12 @@ function editQuestion(index) {
     
     handleQuestionTypeChange();
     window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function clearMediaUpload() {
+    document.getElementById('mediaFile').value = '';
+    document.getElementById('mediaPreview').textContent = '';
+    document.getElementById('clearMediaBtn').style.display = 'none';
 }
 
 async function updateQuestion() {
@@ -814,6 +821,42 @@ async function updateQuestion() {
             alert('Question updated successfully!');
         } else {
             alert(data.error || 'Error updating question');
+        }
+    } catch (error) {
+        alert('Network error: ' + error.message);
+    }
+}
+
+function cancelEdit() {
+    editingQuestionIndex = -1;
+    document.getElementById('questionForm').classList.remove('editing-mode');
+    document.getElementById('editIndicator').style.display = 'none';
+    document.getElementById('submitQuestionBtn').textContent = 'Add Question';
+    document.getElementById('cancelEditBtn').style.display = 'none';
+    resetQuestionForm();
+}
+
+async function deleteQuestion(index) {
+    if (!confirm('Are you sure you want to delete this question?')) {
+        return;
+    }
+
+    const question = questions[index];
+
+    try {
+        const response = await fetch(`${API_URL}/quiz/${currentQuizId}/questions/${question._id}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (response.ok) {
+            questions.splice(index, 1);
+            displayQuestions();
+            alert('Question deleted successfully!');
+        } else {
+            alert('Error deleting question');
         }
     } catch (error) {
         alert('Network error: ' + error.message);
@@ -890,27 +933,27 @@ function resetQuestionForm() {
     handleQuestionTypeChange();
 }
 
-        function finishQuiz() {
-            if (questions.length === 0) {
-                alert('Please add at least one question');
-                return;
-            }
+function finishQuiz() {
+    if (questions.length === 0) {
+        alert('Please add at least one question');
+        return;
+    }
 
-            document.getElementById('finalQuestionCount').textContent = questions.length;
-            document.getElementById('step2').classList.remove('active');
-            document.getElementById('step3').classList.add('active');
-        }
+    document.getElementById('finalQuestionCount').textContent = questions.length;
+    document.getElementById('step2').classList.remove('active');
+    document.getElementById('step3').classList.add('active');
+}
 
-        function copyShareLink() {
-            const link = document.getElementById('shareableLink').textContent;
-            navigator.clipboard.writeText(link).then(() => {
-                alert('Link copied to clipboard!');
-            });
-        }
+function copyShareLink() {
+    const link = document.getElementById('shareableLink').textContent;
+    navigator.clipboard.writeText(link).then(() => {
+        alert('Link copied to clipboard!');
+    });
+}
 
-        function createAnother() {
-            window.location.reload();
-        }
+function createAnother() {
+    window.location.reload();
+}
     </script>
 </body>
 </html>
