@@ -107,10 +107,12 @@ exports.getQuizById = async (req, res) => {
 };
 
 // Add question to quiz
+// INSTRUCTIONS: Replace the addQuestion function in your quizController.js with this updated version
+
 exports.addQuestion = async (req, res) => {
   try {
     const { quizId } = req.params;
-    let { questionText, questionType, options, correctAnswer } = req.body;
+    let { questionText, questionType, options, correctAnswer, isImportant, points } = req.body;
 
     // Find quiz
     const quiz = await Quiz.findOne({ _id: quizId, creatorId: req.userId });
@@ -133,16 +135,32 @@ exports.addQuestion = async (req, res) => {
         correctAnswer = JSON.parse(correctAnswer);
       } catch (e) {
         // If it's already a plain string, keep it as is
-        // This handles both JSON arrays and plain strings
       }
     }
+
+    // Parse points if it's a string (from FormData)
+    let parsedPoints = { correct: 1, wrong: 0, unattempted: 0 };
+    if (typeof points === 'string') {
+      try {
+        parsedPoints = JSON.parse(points);
+      } catch (e) {
+        // Use default points if parsing fails
+      }
+    } else if (points && typeof points === 'object') {
+      parsedPoints = points;
+    }
+
+    // Parse isImportant
+    const questionIsImportant = isImportant === 'true' || isImportant === true;
 
     // Prepare question object
     const question = {
       questionText,
       questionType,
       order: quiz.questions.length + 1,
-      mediaType: 'none'
+      mediaType: 'none',
+      isImportant: questionIsImportant,
+      points: parsedPoints
     };
 
     // Handle media upload if present
@@ -196,6 +214,102 @@ exports.addQuestion = async (req, res) => {
   } catch (error) {
     console.error('Add question error:', error);
     res.status(500).json({ error: 'Server error while adding question' });
+  }
+};
+
+// ALSO: Replace the updateQuestion function with this updated version
+
+exports.updateQuestion = async (req, res) => {
+  try {
+    const { quizId, questionId } = req.params;
+    let { questionText, questionType, options, correctAnswer, isImportant, points } = req.body;
+
+    const quiz = await Quiz.findOne({ _id: quizId, creatorId: req.userId });
+    if (!quiz) {
+      return res.status(404).json({ error: 'Quiz not found' });
+    }
+
+    const question = quiz.questions.id(questionId);
+    if (!question) {
+      return res.status(404).json({ error: 'Question not found' });
+    }
+
+    // Parse options if it's a string (from FormData)
+    if (typeof options === 'string') {
+      try {
+        options = JSON.parse(options);
+      } catch (e) {
+        return res.status(400).json({ error: 'Invalid options format' });
+      }
+    }
+
+    // Parse correctAnswer if it's a string (from FormData)
+    if (typeof correctAnswer === 'string') {
+      try {
+        correctAnswer = JSON.parse(correctAnswer);
+      } catch (e) {
+        // Keep as plain string if not valid JSON
+      }
+    }
+
+    // Parse points if it's a string (from FormData)
+    if (typeof points === 'string') {
+      try {
+        question.points = JSON.parse(points);
+      } catch (e) {
+        // Keep existing points if parsing fails
+      }
+    } else if (points && typeof points === 'object') {
+      question.points = points;
+    }
+
+    // Parse isImportant
+    if (isImportant !== undefined) {
+      question.isImportant = isImportant === 'true' || isImportant === true;
+    }
+
+    // Update fields
+    if (questionText) question.questionText = questionText;
+    if (questionType) question.questionType = questionType;
+
+    // Handle media upload if present
+    if (req.file) {
+      let resourceType = 'auto';
+      if (req.file.mimetype.startsWith('video/')) {
+        resourceType = 'video';
+        question.mediaType = 'video';
+      } else if (req.file.mimetype.startsWith('audio/')) {
+        resourceType = 'video';
+        question.mediaType = 'audio';
+      } else if (req.file.mimetype.startsWith('image/')) {
+        resourceType = 'image';
+        question.mediaType = 'image';
+      }
+
+      const result = await uploadToCloudinary(req.file.buffer, resourceType);
+      question.mediaUrl = result.secure_url;
+    }
+
+    // Update options or correct answer
+    if (questionType === 'mcq' || questionType === 'msq') {
+      if (options && Array.isArray(options)) {
+        question.options = options.map(opt => ({
+          text: opt.text,
+          isCorrect: opt.isCorrect || false
+        }));
+      }
+    } else if (questionType === 'text' && correctAnswer) {
+      question.correctAnswer = Array.isArray(correctAnswer) 
+        ? JSON.stringify(correctAnswer) 
+        : correctAnswer;
+    }
+
+    await quiz.save();
+
+    res.json({ message: 'Question updated successfully', question });
+  } catch (error) {
+    console.error('Update question error:', error);
+    res.status(500).json({ error: 'Server error while updating question' });
   }
 };
 
