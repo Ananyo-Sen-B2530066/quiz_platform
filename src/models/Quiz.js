@@ -20,8 +20,14 @@ const questionSchema = new mongoose.Schema({
     default: 'none'
   },
   options: [optionSchema],
-  correctAnswer: { type: String }, // For text type questions
-  order: { type: Number, required: true }
+  correctAnswer: { type: String }, // For text type questions (JSON string of accepted answers)
+  order: { type: Number, required: true },
+  isImportant: { type: Boolean, default: false }, // NEW: Mark important questions
+  points: { // NEW: Point system
+    correct: { type: Number, default: 1 },
+    wrong: { type: Number, default: 0 },
+    unattempted: { type: Number, default: 0 }
+  }
 });
 
 const quizSchema = new mongoose.Schema({
