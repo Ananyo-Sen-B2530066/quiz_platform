@@ -496,10 +496,7 @@
     </div>
 
     <script>
-        // COMPLETE <script> section for dashboard.html
-// Replace everything between <script> and </script> with this:
-
-const API_URL = '/api';
+        const API_URL = '/api';
 let token = localStorage.getItem('token');
 let currentQuizIdForResults = null;
 
@@ -507,10 +504,8 @@ if (!token) {
     window.location.href = '/';
 }
 
-// Load user profile and quizzes
 async function loadDashboard() {
     try {
-        // Load user profile
         const userResponse = await fetch(`${API_URL}/auth/profile`, {
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -525,7 +520,6 @@ async function loadDashboard() {
             return;
         }
 
-        // Load quizzes
         const quizzesResponse = await fetch(`${API_URL}/quiz`, {
             headers: {
                 'Authorization': `Bearer ${token}`
@@ -633,8 +627,7 @@ function displayAttempts(attempts) {
     }).join('');
 }
 
-async function viewAttemptDetails(attemptId) {
-    // Navigate to the new view-attempt page
+function viewAttemptDetails(attemptId) {
     window.location.href = `/view-attempt/${attemptId}`;
 }
 
@@ -646,7 +639,6 @@ function closeAttemptDetailsModal() {
     document.getElementById('attemptDetailsModal').classList.remove('active');
 }
 
-// Close modals when clicking outside
 window.onclick = function(event) {
     const resultsModal = document.getElementById('resultsModal');
     const detailsModal = document.getElementById('attemptDetailsModal');
@@ -713,7 +705,6 @@ function logout() {
     window.location.href = '/';
 }
 
-// Load dashboard on page load
 loadDashboard();
     </script>
 </body>
