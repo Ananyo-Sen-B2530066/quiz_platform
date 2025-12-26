@@ -235,6 +235,8 @@ let warningCount = 0;
 let isQuizActive = false;
 let randomizedQuestions = [];
 let visibilityChangeHandler, blurHandler;
+let lastViolationTime = 0;
+const VIOLATION_COOLDOWN = 2000; // 2 seconds cooldown
 
 async function loadQuiz() {
     const token = window.location.pathname.split('/').pop();
@@ -356,6 +358,12 @@ function setupSecurityMonitoring() {
 }
 
 function handleSecurityViolation(message) {
+    const now = Date.now();
+    if (now - lastViolationTime < VIOLATION_COOLDOWN) {
+        return; 
+    }
+    
+    lastViolationTime = now;
     warningCount++;
     const banner = document.getElementById('warningBanner');
     document.getElementById('warningCount').textContent = warningCount;
