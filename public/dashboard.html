@@ -623,9 +623,9 @@ function displayAttempts(attempts) {
                         👁️ View Details
                     </button>
                     <button class="btn-danger" style="margin-left: 5px; padding: 6px 12px; border-radius: 4px; font-size: 12px;" 
-            onclick="deleteAttempt('${attempt.id}'">
-        🗑️ Delete
-    </button>
+        onclick="deleteAttempt('${attempt.id}')">
+    🗑️ Delete
+</button>
                 </td>
             </tr>
         `;
@@ -732,7 +732,7 @@ async function deleteAttempt(attemptId) {
 
         if (response.ok) {
             alert('Attempt deleted successfully');
-            // Reload the results to reflect the deletion
+            // Use the global variable to reload results
             const quizTitle = document.getElementById('resultsQuizTitle').textContent.split(' - ')[0];
             viewResults(currentQuizIdForResults, quizTitle);
         } else {
