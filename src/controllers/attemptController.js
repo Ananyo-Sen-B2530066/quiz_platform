@@ -313,3 +313,29 @@ exports.getAttemptDetails = async (req, res) => {
     res.status(500).json({ error: 'Server error while fetching attempt details' });
   }
 };
+
+// Delete attempt (creator only)
+exports.deleteAttempt = async (req, res) => {
+  try {
+    const { attemptId } = req.params;
+
+    const attempt = await Attempt.findById(attemptId);
+    
+    if (!attempt) {
+      return res.status(404).json({ error: 'Attempt not found' });
+    }
+
+    // Verify the quiz belongs to the requesting user
+    const quiz = await Quiz.findOne({ _id: attempt.quizId, creatorId: req.userId });
+    if (!quiz) {
+      return res.status(403).json({ error: 'Unauthorized' });
+    }
+
+    await Attempt.findByIdAndDelete(attemptId);
+
+    res.json({ message: 'Attempt deleted successfully' });
+  } catch (error) {
+    console.error('Delete attempt error:', error);
+    res.status(500).json({ error: 'Server error while deleting attempt' });
+  }
+};
