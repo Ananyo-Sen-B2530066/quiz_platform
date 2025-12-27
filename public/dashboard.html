@@ -717,7 +717,7 @@ function editQuiz(quizId) {
     window.location.href = `/edit-quiz/${quizId}`;
 }
 
-async function deleteAttempt(attemptId, quizId) {
+async function deleteAttempt(attemptId) {
     if (!confirm('Are you sure you want to delete this attempt? This cannot be undone!')) {
         return;
     }
