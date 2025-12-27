@@ -556,6 +556,7 @@ function displayQuizzes(quizzes) {
             </div>
             <div class="quiz-actions">
                 <button class="btn btn-primary" onclick="viewResults('${quiz.id}', '${quiz.title}')">📊 Results</button>
+                <button class="btn btn-success" onclick="editQuiz('${quiz.id}')">✏️ Edit Quiz</button>
                 <button class="btn btn-warning" onclick="toggleLock('${quiz.id}', ${quiz.isLocked})">
                     ${quiz.isLocked ? '🔓 Unlock' : '🔒 Lock'}
                 </button>
@@ -621,6 +622,10 @@ function displayAttempts(attempts) {
                     <button class="view-details-btn" onclick="viewAttemptDetails('${attempt.id}')">
                         👁️ View Details
                     </button>
+                    <button class="btn-danger" style="margin-left: 5px; padding: 6px 12px; border-radius: 4px; font-size: 12px;" 
+            onclick="deleteAttempt('${attempt.id}', '${currentQuizIdForResults}')">
+        🗑️ Delete
+    </button>
                 </td>
             </tr>
         `;
@@ -706,6 +711,36 @@ function logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     window.location.href = '/';
+}
+
+function editQuiz(quizId) {
+    window.location.href = `/edit-quiz/${quizId}`;
+}
+
+async function deleteAttempt(attemptId, quizId) {
+    if (!confirm('Are you sure you want to delete this attempt? This cannot be undone!')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/attempt/${attemptId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (response.ok) {
+            alert('Attempt deleted successfully');
+            // Reload the results to reflect the deletion
+            viewResults(quizId, document.getElementById('resultsQuizTitle').textContent.split(' - ')[0]);
+        } else {
+            const data = await response.json();
+            alert(data.error || 'Error deleting attempt');
+        }
+    } catch (error) {
+        alert('Network error');
+    }
 }
 
 loadDashboard();
