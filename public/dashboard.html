@@ -623,7 +623,7 @@ function displayAttempts(attempts) {
                         👁️ View Details
                     </button>
                     <button class="btn-danger" style="margin-left: 5px; padding: 6px 12px; border-radius: 4px; font-size: 12px;" 
-            onclick="deleteAttempt('${attempt.id}', '${currentQuizIdForResults}')">
+            onclick="deleteAttempt('${attempt.id}'">
         🗑️ Delete
     </button>
                 </td>
@@ -733,13 +733,15 @@ async function deleteAttempt(attemptId, quizId) {
         if (response.ok) {
             alert('Attempt deleted successfully');
             // Reload the results to reflect the deletion
-            viewResults(quizId, document.getElementById('resultsQuizTitle').textContent.split(' - ')[0]);
+            const quizTitle = document.getElementById('resultsQuizTitle').textContent.split(' - ')[0];
+            viewResults(currentQuizIdForResults, quizTitle);
         } else {
             const data = await response.json();
             alert(data.error || 'Error deleting attempt');
         }
     } catch (error) {
-        alert('Network error');
+        console.error('Delete error:', error);
+        alert('Network error: ' + error.message);
     }
 }
 
