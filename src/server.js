@@ -50,7 +50,7 @@ app.get('/view-attempt/:attemptId', (req, res) => {
 });
 
 app.get('/edit-quiz/:id', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'edit-quiz.html'));
+  res.sendFile(path.join(__dirname, '../public/edit-quiz.html'));
 });
 
 
