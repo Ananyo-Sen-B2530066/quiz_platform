@@ -53,6 +53,9 @@ app.get('/edit-quiz/:id', (req, res) => {
   res.sendFile(path.join(__dirname, '../public/edit-quiz.html'));
 });
 
+app.get('/leaderboard/:quizId', (req, res) => {
+  res.sendFile(path.join(__dirname, '../public/leaderboard.html'));
+});
 
 // Health check endpoint for deployment platforms
 app.get('/health', (req, res) => {
