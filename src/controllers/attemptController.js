@@ -235,6 +235,8 @@ exports.submitAttempt = async (req, res) => {
 };
 
 // Get all attempts for a quiz (creator only)
+// Add this updated method to attemptController.js
+
 exports.getQuizAttempts = async (req, res) => {
   try {
     const { quizId } = req.params;
@@ -245,10 +247,18 @@ exports.getQuizAttempts = async (req, res) => {
     }
 
     const attempts = await Attempt.find({ quizId })
-      .select('userIdentifier score maxScore totalQuestions submittedAt responses')
+      .select('userIdentifier score maxScore totalQuestions submittedAt startedAt responses')
       .sort({ submittedAt: -1 });
 
     const summary = {
+      quiz: {
+        id: quiz._id,
+        title: quiz.title,
+        description: quiz.description,
+        timeLimit: quiz.timeLimit,
+        questionCount: quiz.questions.length,
+        createdAt: quiz.createdAt
+      },
       totalAttempts: attempts.length,
       averageScore: attempts.length > 0 
         ? (attempts.reduce((sum, a) => sum + a.score, 0) / attempts.length).toFixed(2)
@@ -264,7 +274,8 @@ exports.getQuizAttempts = async (req, res) => {
         totalQuestions: a.totalQuestions,
         percentage: a.maxScore > 0 ? ((a.score / a.maxScore) * 100).toFixed(2) : 0,
         submittedAt: a.submittedAt,
-        responses: a.responses // Include detailed responses
+        startedAt: a.startedAt,
+        responses: a.responses // Include detailed responses for ranking
       }))
     };
 
