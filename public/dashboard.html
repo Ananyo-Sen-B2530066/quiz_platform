@@ -555,6 +555,7 @@ function displayQuizzes(quizzes) {
                 <button class="copy-btn" onclick="copyLink('${quiz.shareableLink}')">Copy</button>
             </div>
             <div class="quiz-actions">
+                <button class="btn btn-primary" onclick="viewLeaderboard('${quiz.id}', '${quiz.title}')">🏆 Leaderboard</button>
                 <button class="btn btn-primary" onclick="viewResults('${quiz.id}', '${quiz.title}')">📊 Results</button>
                 <button class="btn btn-success" onclick="editQuiz('${quiz.id}')">✏️ Edit Quiz</button>
                 <button class="btn btn-warning" onclick="toggleLock('${quiz.id}', ${quiz.isLocked})">
@@ -715,6 +716,10 @@ function logout() {
 
 function editQuiz(quizId) {
     window.location.href = `/edit-quiz/${quizId}`;
+}
+
+function viewLeaderboard(quizId, quizTitle) {
+    window.location.href = `/leaderboard/${quizId}`;
 }
 
 async function deleteAttempt(attemptId) {
