@@ -26,6 +26,8 @@ exports.getQuizByToken = async (req, res) => {
       mediaType: q.mediaType,
       isImportant: q.isImportant,
       points: q.points || { correct: 1, wrong: 0, unattempted: 0 },
+      clues: q.clues || [],  // ADD THIS
+      level: q.level || 1,   // ADD THIS
       options: q.questionType !== 'text' ? q.options.map(opt => ({
         _id: opt._id,
         text: opt.text
@@ -77,7 +79,6 @@ exports.submitAttempt = async (req, res) => {
   try {
     const { token } = req.params;
     const { userIdentifier, responses, startedAt } = req.body;
-    questionLevel: question.level || 1,
 
     // Get quiz with correct answers
     const quiz = await Quiz.findOne({ shareableToken: token });
@@ -194,6 +195,7 @@ exports.submitAttempt = async (req, res) => {
         questionText: question.questionText,
         questionType: question.questionType,
         isImportant: question.isImportant,
+        questionLevel: question.level || 1,
         selectedOptions: response.selectedOptions,
         textAnswer: response.textAnswer,
         isCorrect,
@@ -216,7 +218,7 @@ exports.submitAttempt = async (req, res) => {
       submittedAt: new Date(),
       score: totalScore,
       maxScore: maxScore,
-      totalQuestions: quiz.questions.length
+      totalQuestions: quiz.questions.length,
       flaggedQuestions: req.body.flaggedQuestions || [] // array of question indices
     });
 
