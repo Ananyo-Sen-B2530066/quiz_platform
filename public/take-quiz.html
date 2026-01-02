@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Take Quiz</title>
+    <title>Take Quiz - Secure Mode</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -610,10 +610,6 @@ function displayQuestion() {
     const actualIndex = randomizedQuestions[currentQuestionIndex];
     const question = quiz.questions[actualIndex];
     const container = document.getElementById('questionContainer');
-    <button type="button" class="btn-flag ${questionFlags[currentQuestionIndex] ? 'flagged' : ''}" 
-        onclick="toggleFlag()" id="flagBtn">
-    ${questionFlags[currentQuestionIndex] ? '🚩 Flagged' : '🏳️ Flag for Review'}
-</button>
     let optionsHtml = '';
     if (question.questionType === 'text') {
         optionsHtml = `<input type="text" class="text-input" id="textAnswer" placeholder="Type your answer here" value="${userAnswers[currentQuestionIndex] || ''}" onchange="saveTextAnswer(this.value)">`;
@@ -648,7 +644,12 @@ if (question.clues && question.clues.length > 0) {
     const importantBadge = question.isImportant ? '<span style="background: #dc3545; color: white; padding: 4px 10px; border-radius: 4px; font-size: 12px; margin-left: 10px; font-weight: bold;">⭐ IMPORTANT</span>' : '';
     const points = question.points || { correct: 1, wrong: 0, unattempted: 0 };
     const pointsInfo = points.correct > 1 || points.wrong < 0 || points.unattempted < 0 ? `<div style="background: #fff3cd; padding: 8px 12px; border-radius: 5px; margin-top: 10px; font-size: 13px; color: #856404;"><strong>Points:</strong> +${points.correct} for correct, ${points.wrong} for wrong, ${points.unattempted} for unattempted</div>` : '';
-    container.innerHTML = `<div class="question-card"><div class="question-number">Question ${currentQuestionIndex + 1} of ${quiz.questions.length} ${importantBadge}</div><div class="question-text">${question.questionText}</div>${pointsInfo}${mediaHtml}<div class="options">${optionsHtml}</div></div>`;
+    container.innerHTML = `<div class="question-card"><div class="question-number">Question ${currentQuestionIndex + 1} of ${quiz.questions.length} ${importantBadge}</div>
+<button type="button" class="btn-flag ${questionFlags[currentQuestionIndex] ? 'flagged' : ''}" 
+            onclick="toggleFlag()" id="flagBtn">
+        ${questionFlags[currentQuestionIndex] ? '🚩 Flagged' : '🏳️ Flag for Review'}
+    </button>
+<div class="question-text">${question.questionText}</div>${pointsInfo}${cluesHtml}${mediaHtml}<div class="options">${optionsHtml}</div></div>`;
     updateNavigation();
     updateProgress();
     updateNavigator();
