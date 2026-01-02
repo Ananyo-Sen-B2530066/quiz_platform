@@ -157,7 +157,6 @@ if (typeof clues === 'string') {
     } catch (e) {}
 }
 
-}
 
     // Parse isImportant
     const questionIsImportant = isImportant === 'true' || isImportant === true;
@@ -284,6 +283,7 @@ if (level !== undefined) {
 }
 if (cluesArray && cluesArray.length > 0) {
     question.clues = parsedClues;
+}
 
     // Parse isImportant
     if (isImportant !== undefined) {
