@@ -28,6 +28,11 @@ const questionSchema = new mongoose.Schema({
     wrong: { type: Number, default: 0 },
     unattempted: { type: Number, default: 0 }
   }
+  clues: [{
+    text: { type: String, required: true },
+    order: { type: Number, required: true }
+  }],
+  level: { type: Number, default: 1, min: 1, max: 5 } // NEW: difficulty level
 });
 
 const quizSchema = new mongoose.Schema({
