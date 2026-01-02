@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Take Quiz - Secure Mode</title>
+    <title>Take Quiz</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -166,12 +166,150 @@
             padding: 20px;
             text-align: center;
         }
+        .question-navigator {
+    position: fixed;
+    top: 100px;
+    right: 20px;
+    z-index: 999;
+}
+.nav-toggle {
+    background: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+}
+.nav-panel {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 50px;
+    background: white;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+    width: 300px;
+    max-height: 400px;
+    overflow-y: auto;
+}
+.nav-panel.active { display: block; }
+.nav-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    margin-top: 15px;
+}
+.nav-item {
+    aspect-ratio: 1;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-weight: bold;
+    position: relative;
+}
+.nav-item.answered { background: #d4edda; border-color: #28a745; }
+.nav-item.flagged { background: #fff3cd; border-color: #ffc107; }
+.nav-item.current { background: #667eea; color: white; border-color: #667eea; }
+.nav-item.unseen { background: #f8f9fa; }
+.nav-item.flagged::after {
+    content: '🚩';
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    font-size: 12px;
+}
+.nav-legend {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 10px;
+    font-size: 12px;
+}
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    border: 2px solid #ddd;
+}
+.dot.answered { background: #28a745; border-color: #28a745; }
+.dot.flagged { background: #ffc107; border-color: #ffc107; }
+.dot.current { background: #667eea; border-color: #667eea; }
+.dot.unseen { background: #f8f9fa; }
         .fullscreen-notice h2 { font-size: 32px; margin-bottom: 20px; }
         .fullscreen-notice p { font-size: 18px; margin-bottom: 30px; max-width: 600px; }
+.btn-flag {
+    background: transparent;
+    border: 2px solid #ffc107;
+    color: #ffc107;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 13px;
+    margin: 10px 0;
+    transition: all 0.3s;
+}
+.btn-flag:hover {
+    background: #fff3cd;
+}
+.btn-flag.flagged {
+    background: #ffc107;
+    color: white;
+    border-color: #ffc107;
+}
+.clues-section {
+    margin: 15px 0;
+}
+.btn-clues {
+    background: #17a2b8;
+    color: white;
+    border: none;
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+}
+.btn-clues:hover {
+    background: #138496;
+}
+.clues-content {
+    margin-top: 10px;
+    padding: 15px;
+    background: #e7f3ff;
+    border-radius: 5px;
+    border-left: 4px solid #17a2b8;
+}
+.clue-item {
+    padding: 8px 0;
+    color: #0c5460;
+}
     </style>
 </head>
 <body>
     <div class="timer" id="timer" style="display: none;">⏱️ <span id="timeRemaining">00:00</span></div>
+    <div class="question-navigator" id="questionNavigator" style="display: none;">
+    <button class="nav-toggle" onclick="toggleNavigator()">📋 Questions</button>
+    <div class="nav-panel" id="navPanel">
+        <div class="nav-header">
+            <h4>Question Status</h4>
+            <div class="nav-legend">
+                <span class="legend-item"><span class="dot answered"></span> Answered</span>
+                <span class="legend-item"><span class="dot flagged"></span> Flagged</span>
+                <span class="legend-item"><span class="dot current"></span> Current</span>
+                <span class="legend-item"><span class="dot unseen"></span> Unseen</span>
+            </div>
+        </div>
+        <div class="nav-grid" id="navGrid"></div>
+    </div>
+</div>
     <div id="warningBanner" class="warning-banner" style="display: none;">⚠️ Warning: Do not leave the quiz! (<span id="warningCount">0</span>/3)</div>
     <div id="fullscreenNotice" class="fullscreen-notice" style="display: none;">
         <h2>⚠️ Return to Quiz Immediately</h2>
@@ -237,6 +375,8 @@ let randomizedQuestions = [];
 let visibilityChangeHandler, blurHandler;
 let lastViolationTime = 0;
 const VIOLATION_COOLDOWN = 2000; // 2 seconds cooldown
+let questionFlags = [];
+let seenQuestions = new Set();
 
 async function loadQuiz() {
     const token = window.location.pathname.split('/').pop();
@@ -265,15 +405,31 @@ function displayStartScreen() {
 }
 
 function randomizeQuestions() {
-    const indices = quiz.questions.map((_, i) => i);
-    for (let i = indices.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [indices[i], indices[j]] = [indices[j], indices[i]];
-    }
-    randomizedQuestions = indices;
+    // Group questions by level
+    const questionsByLevel = {};
+    quiz.questions.forEach((q, index) => {
+        const level = q.level || 1;
+        if (!questionsByLevel[level]) questionsByLevel[level] = [];
+        questionsByLevel[level].push(index);
+    });
+    
+    // Randomize within each level, then concatenate in level order
+    const levels = Object.keys(questionsByLevel).map(Number).sort((a, b) => a - b);
+    randomizedQuestions = [];
+    
+    levels.forEach(level => {
+        const indices = questionsByLevel[level];
+        // Fisher-Yates shuffle within level
+        for (let i = indices.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [indices[i], indices[j]] = [indices[j], indices[i]];
+        }
+        randomizedQuestions.push(...indices);
+    });
+    
     userAnswers = new Array(quiz.questions.length).fill(null);
+    questionFlags = new Array(quiz.questions.length).fill(false); // NEW
 }
-
 async function startQuiz() {
     const email = document.getElementById('userEmail').value.trim();
     if (!email) {
@@ -305,6 +461,8 @@ async function startQuiz() {
     } catch (error) {
         showError('Network error. Please try again.');
     }
+    document.getElementById('questionNavigator').style.display = 'block';
+    updateNavigator();
 }
 
 function enterFullscreen() {
@@ -405,10 +563,57 @@ function startTimer() {
     }, 1000);
 }
 
+function toggleNavigator() {
+    document.getElementById('navPanel').classList.toggle('active');
+}
+
+function toggleFlag() {
+    questionFlags[currentQuestionIndex] = !questionFlags[currentQuestionIndex];
+    const btn = document.getElementById('flagBtn');
+    if (questionFlags[currentQuestionIndex]) {
+        btn.classList.add('flagged');
+        btn.textContent = '🚩 Flagged';
+    } else {
+        btn.classList.remove('flagged');
+        btn.textContent = '🏳️ Flag for Review';
+    }
+    updateNavigator();
+}
+
+function toggleClues() {
+    const content = document.getElementById('cluesContent');
+    content.style.display = content.style.display === 'none' ? 'block' : 'none';
+}
+
+function updateNavigator() {
+    seenQuestions.add(currentQuestionIndex);
+    const grid = document.getElementById('navGrid');
+    grid.innerHTML = quiz.questions.map((_, index) => {
+        let className = 'nav-item unseen';
+        if (index === currentQuestionIndex) className = 'nav-item current';
+        else if (userAnswers[index] !== null && userAnswers[index] !== '') className = 'nav-item answered';
+        else if (seenQuestions.has(index)) className = 'nav-item';
+        
+        if (questionFlags[index]) className += ' flagged';
+        
+        return `<div class="${className}" onclick="jumpToQuestion(${index})">${index + 1}</div>`;
+    }).join('');
+}
+
+function jumpToQuestion(index) {
+    currentQuestionIndex = index;
+    displayQuestion();
+    toggleNavigator();
+}
+
 function displayQuestion() {
     const actualIndex = randomizedQuestions[currentQuestionIndex];
     const question = quiz.questions[actualIndex];
     const container = document.getElementById('questionContainer');
+    <button type="button" class="btn-flag ${questionFlags[currentQuestionIndex] ? 'flagged' : ''}" 
+        onclick="toggleFlag()" id="flagBtn">
+    ${questionFlags[currentQuestionIndex] ? '🚩 Flagged' : '🏳️ Flag for Review'}
+</button>
     let optionsHtml = '';
     if (question.questionType === 'text') {
         optionsHtml = `<input type="text" class="text-input" id="textAnswer" placeholder="Type your answer here" value="${userAnswers[currentQuestionIndex] || ''}" onchange="saveTextAnswer(this.value)">`;
@@ -425,12 +630,28 @@ function displayQuestion() {
         else if (question.mediaType === 'video') mediaHtml = `<div class="media-container"><video controls src="${question.mediaUrl}"></video></div>`;
         else if (question.mediaType === 'audio') mediaHtml = `<div class="media-container"><audio controls src="${question.mediaUrl}"></audio></div>`;
     }
+    let cluesHtml = '';
+if (question.clues && question.clues.length > 0) {
+    cluesHtml = `
+        <div class="clues-section">
+            <button type="button" class="btn-clues" onclick="toggleClues()">
+                💡 Show Clues (${question.clues.length})
+            </button>
+            <div class="clues-content" id="cluesContent" style="display: none;">
+                ${question.clues.map((clue, i) => 
+                    `<div class="clue-item">💡 Clue ${i + 1}: ${clue.text}</div>`
+                ).join('')}
+            </div>
+        </div>
+    `;
+}
     const importantBadge = question.isImportant ? '<span style="background: #dc3545; color: white; padding: 4px 10px; border-radius: 4px; font-size: 12px; margin-left: 10px; font-weight: bold;">⭐ IMPORTANT</span>' : '';
     const points = question.points || { correct: 1, wrong: 0, unattempted: 0 };
     const pointsInfo = points.correct > 1 || points.wrong < 0 || points.unattempted < 0 ? `<div style="background: #fff3cd; padding: 8px 12px; border-radius: 5px; margin-top: 10px; font-size: 13px; color: #856404;"><strong>Points:</strong> +${points.correct} for correct, ${points.wrong} for wrong, ${points.unattempted} for unattempted</div>` : '';
     container.innerHTML = `<div class="question-card"><div class="question-number">Question ${currentQuestionIndex + 1} of ${quiz.questions.length} ${importantBadge}</div><div class="question-text">${question.questionText}</div>${pointsInfo}${mediaHtml}<div class="options">${optionsHtml}</div></div>`;
     updateNavigation();
     updateProgress();
+    updateNavigator();
 }
 
 function selectOption(optionId, questionType) {
