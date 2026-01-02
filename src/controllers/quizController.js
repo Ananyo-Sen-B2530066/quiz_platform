@@ -112,7 +112,7 @@ exports.getQuizById = async (req, res) => {
 exports.addQuestion = async (req, res) => {
   try {
     const { quizId } = req.params;
-    let { questionText, questionType, options, correctAnswer, isImportant, points } = req.body;
+    let { questionText, questionType, options, correctAnswer, isImportant, points, level, clues } = req.body;
 
     // Find quiz
     const quiz = await Quiz.findOne({ _id: quizId, creatorId: req.userId });
@@ -215,12 +215,21 @@ exports.addQuestion = async (req, res) => {
     console.error('Add question error:', error);
     res.status(500).json({ error: 'Server error while adding question' });
   }
+  let parsedClues = [];
+if (typeof clues === 'string') {
+    try {
+        parsedClues = JSON.parse(clues);
+    } catch (e) {}
+}
+
+question.level = parseInt(level) || 1;
+question.clues = parsedClues;
 };
 
 exports.updateQuestion = async (req, res) => {
   try {
     const { quizId, questionId } = req.params;
-    let { questionText, questionType, options, correctAnswer, isImportant, points } = req.body;
+    let { questionText, questionType, options, correctAnswer, isImportant, points, level, clues } = req.body;
 
     const quiz = await Quiz.findOne({ _id: quizId, creatorId: req.userId });
     if (!quiz) {
@@ -309,6 +318,15 @@ exports.updateQuestion = async (req, res) => {
     console.error('Update question error:', error);
     res.status(500).json({ error: 'Server error while updating question' });
   }
+  let parsedClues = [];
+if (typeof clues === 'string') {
+    try {
+        parsedClues = JSON.parse(clues);
+    } catch (e) {}
+}
+
+question.level = parseInt(level) || 1;
+question.clues = parsedClues;
 };
 
 // Delete question
