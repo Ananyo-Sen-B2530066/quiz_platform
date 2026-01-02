@@ -77,6 +77,7 @@ exports.submitAttempt = async (req, res) => {
   try {
     const { token } = req.params;
     const { userIdentifier, responses, startedAt } = req.body;
+    questionLevel: question.level || 1,
 
     // Get quiz with correct answers
     const quiz = await Quiz.findOne({ shareableToken: token });
@@ -216,6 +217,7 @@ exports.submitAttempt = async (req, res) => {
       score: totalScore,
       maxScore: maxScore,
       totalQuestions: quiz.questions.length
+      flaggedQuestions: req.body.flaggedQuestions || [] // array of question indices
     });
 
     await attempt.save();
