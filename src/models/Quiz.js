@@ -27,7 +27,7 @@ const questionSchema = new mongoose.Schema({
     correct: { type: Number, default: 1 },
     wrong: { type: Number, default: 0 },
     unattempted: { type: Number, default: 0 }
-  }
+  },
   clues: [{
     text: { type: String, required: true },
     order: { type: Number, required: true }
