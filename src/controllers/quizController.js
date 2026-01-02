@@ -157,11 +157,6 @@ if (typeof clues === 'string') {
     } catch (e) {}
 }
 
-if (level !== undefined) {
-    question.level = parseInt(level) || 1;
-}
-if (cluesArray && cluesArray.length > 0) {
-    question.clues = parsedClues;
 }
 
     // Parse isImportant
@@ -283,6 +278,12 @@ if (typeof clues === 'string') {
         parsedClues = JSON.parse(clues);
     } catch (e) {}
 }
+
+if (level !== undefined) {
+    question.level = parseInt(level) || 1;
+}
+if (cluesArray && cluesArray.length > 0) {
+    question.clues = parsedClues;
 
     // Parse isImportant
     if (isImportant !== undefined) {
