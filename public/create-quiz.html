@@ -377,6 +377,24 @@
         </div>
         <p class="info-text">Set points for correct, wrong, and unattempted answers. Use negative values for penalties.</p>
     </div>
+  
+    <div class="form-group">
+    <label>Question Level (Difficulty)</label>
+    <select id="questionLevel">
+        <option value="1">Level 1 (Easiest)</option>
+        <option value="2">Level 2</option>
+        <option value="3">Level 3</option>
+        <option value="4">Level 4</option>
+        <option value="5">Level 5 (Hardest)</option>
+    </select>
+</div>
+
+<div class="form-group">
+    <label>Clues (Optional)</label>
+    <p class="info-text">Add hints to help participants</p>
+    <div id="cluesList"></div>
+    <button type="button" class="btn btn-secondary" onclick="addClue()">+ Add Clue</button>
+</div>
 
     <div class="form-group">
     <label>Add Media (Optional)</label>
@@ -452,6 +470,7 @@ let questions = [];
 let optionCount = 0;
 let acceptedAnswers = [];
 let editingQuestionIndex = -1;
+let clues = [];
 
 if (!token) {
     window.location.href = '/';
@@ -566,6 +585,16 @@ function updateOptionInputTypes(type) {
     });
 }
 
+function addClue() {
+    const clueDiv = document.createElement('div');
+    clueDiv.className = 'option-input-wrapper';
+    clueDiv.innerHTML = `
+        <input type="text" placeholder="Clue ${clues.length + 1}" class="clue-text">
+        <button type="button" class="btn btn-danger" onclick="this.parentElement.remove()">×</button>
+    `;
+    document.getElementById('cluesList').appendChild(clueDiv);
+}
+
 function addOption() {
     optionCount++;
     const questionType = document.getElementById('questionType').value;
@@ -627,6 +656,11 @@ async function addQuestion() {
     const pointsCorrect = parseInt(document.getElementById('pointsCorrect').value) || 1;
     const pointsWrong = parseInt(document.getElementById('pointsWrong').value) || 0;
     const pointsUnattempted = parseInt(document.getElementById('pointsUnattempted').value) || 0;
+    const level = parseInt(document.getElementById('questionLevel').value);
+    const clueInputs = document.querySelectorAll('.clue-text');
+    const cluesArray = Array.from(clueInputs)
+        .map((input, index) => ({ text: input.value.trim(), order: index + 1 }))
+        .filter(clue => clue.text);
 
     const formData = new FormData();
     formData.append('questionText', questionText);
@@ -637,6 +671,8 @@ async function addQuestion() {
         wrong: pointsWrong,
         unattempted: pointsUnattempted
     }));
+    formData.append('level', level);
+    formData.append('clues', JSON.stringify(cluesArray));
 
     if (mediaFile) {
         formData.append('media', mediaFile);
@@ -763,6 +799,11 @@ async function updateQuestion() {
     const pointsCorrect = parseInt(document.getElementById('pointsCorrect').value) || 1;
     const pointsWrong = parseInt(document.getElementById('pointsWrong').value) || 0;
     const pointsUnattempted = parseInt(document.getElementById('pointsUnattempted').value) || 0;
+    const level = parseInt(document.getElementById('questionLevel').value);
+    const clueInputs = document.querySelectorAll('.clue-text');
+    const cluesArray = Array.from(clueInputs)
+        .map((input, index) => ({ text: input.value.trim(), order: index + 1 }))
+        .filter(clue => clue.text);
 
     const formData = new FormData();
     formData.append('questionText', questionText);
@@ -773,6 +814,8 @@ async function updateQuestion() {
         wrong: pointsWrong,
         unattempted: pointsUnattempted
     }));
+    formData.append('level', level);
+    formData.append('clues', JSON.stringify(cluesArray));
 
     if (questionType === 'text') {
         if (acceptedAnswers.length === 0) {
