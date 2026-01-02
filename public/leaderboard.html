@@ -372,30 +372,41 @@
         }
 
         function rankAttempts(attempts) {
-            return attempts
-                .map(attempt => ({
-                    ...attempt,
-                    metrics: calculateRankingMetrics(attempt)
-                }))
-                .sort((a, b) => {
-                    // Rule 1: Higher score wins
-                    if (a.score !== b.score) return b.score - a.score;
+    return attempts
+        .map(attempt => ({
+            ...attempt,
+            metrics: calculateRankingMetrics(attempt)
+        }))
+        .sort((a, b) => {
+            // Rule 1: Higher score wins
+            if (a.score !== b.score) return b.score - a.score;
 
-                    // Rule 2: More important questions correct
-                    if (a.metrics.importantCorrect !== b.metrics.importantCorrect) {
-                        return b.metrics.importantCorrect - a.metrics.importantCorrect;
-                    }
+            // Rule 2: More important questions correct
+            if (a.metrics.importantCorrect !== b.metrics.importantCorrect) {
+                return b.metrics.importantCorrect - a.metrics.importantCorrect;
+            }
 
-                    // Rule 3: Fewer negative marks
-                    if (a.metrics.negativeMarks !== b.metrics.negativeMarks) {
-                        return a.metrics.negativeMarks - b.metrics.negativeMarks;
-                    }
+            // NEW Rule 3: Higher level questions correct
+            const aHighLevelCorrect = a.responses.filter(r => 
+                r.isCorrect && r.questionLevel >= 4
+            ).length;
+            const bHighLevelCorrect = b.responses.filter(r => 
+                r.isCorrect && r.questionLevel >= 4
+            ).length;
+            if (aHighLevelCorrect !== bHighLevelCorrect) {
+                return bHighLevelCorrect - aHighLevelCorrect;
+            }
 
-                    // Rule 4: Faster submission time
-                    return a.metrics.timeTaken - b.metrics.timeTaken;
-                })
-                .slice(0, 10); // Top 10
-        }
+            // Rule 4: Fewer negative marks
+            if (a.metrics.negativeMarks !== b.metrics.negativeMarks) {
+                return a.metrics.negativeMarks - b.metrics.negativeMarks;
+            }
+
+            // Rule 5: Faster submission time
+            return a.metrics.timeTaken - b.metrics.timeTaken;
+        })
+        .slice(0, 10);
+}
 
         function detectTies(rankedAttempts) {
             return rankedAttempts.map((attempt, index) => {
