@@ -150,6 +150,20 @@ exports.addQuestion = async (req, res) => {
       parsedPoints = points;
     }
 
+    let parsedClues = [];
+if (typeof clues === 'string') {
+    try {
+        parsedClues = JSON.parse(clues);
+    } catch (e) {}
+}
+
+if (level !== undefined) {
+    question.level = parseInt(level) || 1;
+}
+if (cluesArray && cluesArray.length > 0) {
+    question.clues = parsedClues;
+}
+
     // Parse isImportant
     const questionIsImportant = isImportant === 'true' || isImportant === true;
 
@@ -160,7 +174,9 @@ exports.addQuestion = async (req, res) => {
       order: quiz.questions.length + 1,
       mediaType: 'none',
       isImportant: questionIsImportant,
-      points: parsedPoints
+      points: parsedPoints,
+      level: parseInt(level) || 1,  // ADD THIS
+      clues: parsedClues 
     };
 
     // Handle media upload if present
@@ -215,15 +231,6 @@ exports.addQuestion = async (req, res) => {
     console.error('Add question error:', error);
     res.status(500).json({ error: 'Server error while adding question' });
   }
-  let parsedClues = [];
-if (typeof clues === 'string') {
-    try {
-        parsedClues = JSON.parse(clues);
-    } catch (e) {}
-}
-
-question.level = parseInt(level) || 1;
-question.clues = parsedClues;
 };
 
 exports.updateQuestion = async (req, res) => {
@@ -269,6 +276,13 @@ exports.updateQuestion = async (req, res) => {
     } else if (points && typeof points === 'object') {
       question.points = points;
     }
+   
+    let parsedClues = [];
+if (typeof clues === 'string') {
+    try {
+        parsedClues = JSON.parse(clues);
+    } catch (e) {}
+}
 
     // Parse isImportant
     if (isImportant !== undefined) {
@@ -318,15 +332,6 @@ exports.updateQuestion = async (req, res) => {
     console.error('Update question error:', error);
     res.status(500).json({ error: 'Server error while updating question' });
   }
-  let parsedClues = [];
-if (typeof clues === 'string') {
-    try {
-        parsedClues = JSON.parse(clues);
-    } catch (e) {}
-}
-
-question.level = parseInt(level) || 1;
-question.clues = parsedClues;
 };
 
 // Delete question
