@@ -12,7 +12,7 @@ const responseSchema = new mongoose.Schema({
   earnedPoints: { type: Number, default: 0 },
   maxPoints: { type: Number, default: 1 },
   userAnswer: { type: mongoose.Schema.Types.Mixed }, // What user selected
-  correctAnswer: { type: mongoose.Schema.Types.Mixed } // What was correct
+  correctAnswer: { type: mongoose.Schema.Types.Mixed }, // What was correct
   questionLevel: { type: Number, default: 1 }
 });
 
