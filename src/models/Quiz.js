@@ -20,19 +20,19 @@ const questionSchema = new mongoose.Schema({
     default: 'none'
   },
   options: [optionSchema],
-  correctAnswer: { type: String }, // For text type questions (JSON string of accepted answers)
+  correctAnswer: { type: String },
   order: { type: Number, required: true },
-  isImportant: { type: Boolean, default: false }, // NEW: Mark important questions
-  points: { // NEW: Point system
+  isImportant: { type: Boolean, default: false },
+  points: {
     correct: { type: Number, default: 1 },
     wrong: { type: Number, default: 0 },
     unattempted: { type: Number, default: 0 }
   },
   clues: [{
-    text: { type: String, required: true },
-    order: { type: Number, required: true }
+    text: String,  // Simplified and optional
+    order: Number  // Simplified and optional
   }],
-  level: { type: Number, default: 1, min: 1, max: 5 } // NEW: difficulty level
+  level: { type: Number, default: 1, min: 1, max: 5 }
 });
 
 const quizSchema = new mongoose.Schema({
@@ -43,7 +43,7 @@ const quizSchema = new mongoose.Schema({
   },
   title: { type: String, required: true },
   description: { type: String },
-  timeLimit: { type: Number, required: true }, // in minutes
+  timeLimit: { type: Number, required: true },
   isLocked: { type: Boolean, default: false },
   shareableToken: { 
     type: String, 
