@@ -98,7 +98,10 @@ quiz-platform/
 │   ├── index.html
 │   ├── dashboard.html
 │   ├── create-quiz.html
-│   └── take-quiz.html
+│   ├── take-quiz.html
+│   ├── edit-quiz.html
+│   ├── view-attempt.html
+│   └── leaderboard.html
 ├── package.json
 ├── .gitignore
 ├── .env
