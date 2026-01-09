@@ -274,6 +274,34 @@
 
         <div id="editContent" style="display: none;">
             <div class="card">
+        <h2>Quiz Details</h2>
+        <form id="quizDetailsForm">
+            <div class="form-group">
+                <label>Quiz Title *</label>
+                <input type="text" id="quizTitle" required>
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="quizDescription" rows="3"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Time Limit (minutes) *</label>
+                <input type="number" id="quizTimeLimit" required min="1">
+            </div>
+            <div class="form-group">
+                <label>Quiz Rules (Optional)</label>
+                <textarea id="quizRules" rows="6" placeholder="Enter rules and instructions for participants"></textarea>
+                <p class="info-text">These rules will be displayed to participants before they start the quiz</p>
+            </div>
+            <button type="submit" class="btn btn-primary">Update Quiz Details</button>
+        </form>
+    </div>
+          
+            <div class="card">
+                <h2>Questions</h2>
+                <p style="color: #666; margin-top: 10px;">Add, edit, or remove questions from your quiz</p>
+            </div>
+            <div class="card">
                 <h2>Edit: <span id="displayQuizTitle"></span></h2>
                 <p style="color: #666; margin-top: 10px;">Add, edit, or remove questions from your quiz</p>
             </div>
@@ -368,7 +396,7 @@
 
                 <div id="textAnswerContainer" class="form-group" style="display: none;">
                     <label>Accepted Answers *</label>
-                    <p class="info-text">Add all possible correct answers (e.g., "4", "four", "Four")</p>
+                    <p class="info-text">Add all possible correct answers. Answers are case-insensitive and will be stored in UPPERCASE (e.g., "cat", "Cat", "CAT" are all treated the same)</p>
                     <div class="add-answer-box">
                         <input type="text" id="newAnswer" placeholder="Type an answer and click Add">
                         <button type="button" class="btn btn-secondary" onclick="addAcceptedAnswer()">Add Answer</button>
@@ -403,38 +431,78 @@
             window.location.href = '/';
         }
 
+        document.getElementById('quizDetailsForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    await updateQuizDetails();
+});
+
+async function updateQuizDetails() {
+    const title = document.getElementById('quizTitle').value;
+    const description = document.getElementById('quizDescription').value;
+    const timeLimit = document.getElementById('quizTimeLimit').value;
+    const rules = document.getElementById('quizRules').value;
+
+    try {
+        const response = await fetch(`${API_URL}/quiz/${currentQuizId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ title, description, timeLimit, rules })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            document.getElementById('displayQuizTitle').textContent = title;
+            alert('Quiz details updated successfully!');
+        } else {
+            alert(data.error || 'Error updating quiz details');
+        }
+    } catch (error) {
+        alert('Network error: ' + error.message);
+    }
+}
+
         // Load existing quiz data
         async function loadExistingQuiz() {
-            try {
-                const response = await fetch(`${API_URL}/quiz/${currentQuizId}`, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    document.getElementById('displayQuizTitle').textContent = data.quiz.title;
-                    questions = data.quiz.questions || [];
-                    displayQuestions();
-                    
-                    // Show edit content, hide loading
-                    document.getElementById('loadingState').style.display = 'none';
-                    document.getElementById('editContent').style.display = 'block';
-                    
-                    // Initialize with 2 empty options
-                    addOption();
-                    addOption();
-                } else {
-                    alert(data.error || 'Error loading quiz');
-                    window.location.href = '/dashboard';
-                }
-            } catch (error) {
-                alert('Network error: ' + error.message);
-                window.location.href = '/dashboard';
+    try {
+        const response = await fetch(`${API_URL}/quiz/${currentQuizId}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
             }
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            // Populate quiz details form
+            document.getElementById('quizTitle').value = data.quiz.title;
+            document.getElementById('quizDescription').value = data.quiz.description || '';
+            document.getElementById('quizTimeLimit').value = data.quiz.timeLimit;
+            document.getElementById('quizRules').value = data.quiz.rules || '';  // ADD THIS LINE
+            
+            document.getElementById('displayQuizTitle').textContent = data.quiz.title;
+            questions = data.quiz.questions || [];
+            displayQuestions();
+            
+            // Show edit content, hide loading
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('editContent').style.display = 'block';
+            
+            // Initialize with 2 empty options
+            addOption();
+            addOption();
+        } else {
+            alert(data.error || 'Error loading quiz');
+            window.location.href = '/dashboard';
         }
+    } catch (error) {
+        alert('Network error: ' + error.message);
+        window.location.href = '/dashboard';
+    }
+}
 
         document.getElementById('questionForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -540,14 +608,16 @@
                 return;
             }
             
-            if (acceptedAnswers.includes(answer)) {
-                alert('This answer already exists');
-                return;
-            }
-            
-            acceptedAnswers.push(answer);
-            input.value = '';
-            displayAcceptedAnswers();
+            const uppercaseAnswer = answer.toUpperCase();
+    
+    if (acceptedAnswers.includes(uppercaseAnswer)) {
+        alert('This answer already exists');
+        return;
+    }
+    
+    acceptedAnswers.push(uppercaseAnswer);  // STORE IN UPPERCASE
+    input.value = '';
+    displayAcceptedAnswers();
         }
 
         function displayAcceptedAnswers() {
@@ -678,8 +748,14 @@ formData.append('clues', JSON.stringify(cluesArray));
             document.getElementById('pointsUnattempted').value = points.unattempted;
             
             if (question.questionType === 'text') {
-                acceptedAnswers = JSON.parse(question.correctAnswer || '[]');
-                displayAcceptedAnswers();
+                try {
+        acceptedAnswers = JSON.parse(question.correctAnswer || '[]');
+        // Ensure all answers are uppercase
+        acceptedAnswers = acceptedAnswers.map(ans => ans.toUpperCase());
+    } catch (e) {
+        acceptedAnswers = [];
+    }
+    displayAcceptedAnswers();
             } else {
                 const optionsList = document.getElementById('optionsList');
                 optionsList.innerHTML = '';
