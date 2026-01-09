@@ -135,11 +135,11 @@ exports.submitAttempt = async (req, res) => {
   }
 
   // Convert user answer to uppercase for comparison
-  const userTextAnswer = response.textAnswer?.trim().toUpperCase() || '';  // CONVERT TO UPPERCASE
+  const userTextAnswer = response.textAnswer?.trim().toUpperCase() || '';
   
   // Compare with uppercase accepted answers
   isCorrect = acceptedAnswers.some(ans => 
-    ans.toUpperCase().trim() === userTextAnswer  // ENSURE COMPARISON IS UPPERCASE
+    ans.toUpperCase().trim() === userTextAnswer
   );
 
   correctAnswer = acceptedAnswers;
@@ -151,9 +151,8 @@ exports.submitAttempt = async (req, res) => {
   } else {
     earnedPoints = points.unattempted;
   }
-}
 
-      } else if (question.questionType === 'mcq') {
+} else if (question.questionType === 'mcq') {
         if (response.selectedOptions && response.selectedOptions.length > 0) {
           const selectedOption = question.options.id(response.selectedOptions[0]);
           isCorrect = selectedOption?.isCorrect || false;
