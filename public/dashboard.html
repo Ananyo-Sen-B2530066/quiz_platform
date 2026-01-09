@@ -549,6 +549,7 @@ function displayQuizzes(quizzes) {
                 <span>⏱️ ${quiz.timeLimit} min</span>
                 <span>❓ ${quiz.questionCount} questions</span>
                 <span>${quiz.isLocked ? '<span class="locked-badge">🔒 Locked</span>' : '<span class="unlocked-badge">🔓 Active</span>'}</span>
+                <span>${quiz.isStarted ? '<span class="unlocked-badge">▶️ Started</span>' : '<span class="locked-badge">⏸️ Not Started</span>'}</span>
             </div>
             <div class="quiz-link">
                 <span style="flex: 1; overflow: hidden; text-overflow: ellipsis;">${quiz.shareableLink}</span>
@@ -558,6 +559,9 @@ function displayQuizzes(quizzes) {
                 <button class="btn btn-primary" onclick="viewLeaderboard('${quiz.id}', '${quiz.title}')">🏆 Leaderboard</button>
                 <button class="btn btn-primary" onclick="viewResults('${quiz.id}', '${quiz.title}')">📊 Results</button>
                 <button class="btn btn-success" onclick="editQuiz('${quiz.id}')">✏️ Edit Quiz</button>
+                <button class="btn ${quiz.isStarted ? 'btn-danger' : 'btn-success'}" onclick="toggleStart('${quiz.id}', ${quiz.isStarted})">
+                    ${quiz.isStarted ? '⏸️ Stop Quiz' : '▶️ Start Quiz'}
+                </button>
                 <button class="btn btn-warning" onclick="toggleLock('${quiz.id}', ${quiz.isLocked})">
                     ${quiz.isLocked ? '🔓 Unlock' : '🔒 Lock'}
                 </button>
@@ -664,6 +668,31 @@ async function toggleLock(quizId, isLocked) {
 
     try {
         const response = await fetch(`${API_URL}/quiz/${quizId}/lock`, {
+            method: 'PATCH',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+
+        if (response.ok) {
+            alert(`Quiz ${action}ed successfully`);
+            loadDashboard();
+        } else {
+            alert(`Error ${action}ing quiz`);
+        }
+    } catch (error) {
+        alert('Network error');
+    }
+}
+
+async function toggleStart(quizId, isStarted) {
+    const action = isStarted ? 'stop' : 'start';
+    if (!confirm(`Are you sure you want to ${action} this quiz?`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API_URL}/quiz/${quizId}/start`, {
             method: 'PATCH',
             headers: {
                 'Authorization': `Bearer ${token}`
