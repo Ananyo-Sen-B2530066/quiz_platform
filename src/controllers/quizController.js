@@ -28,7 +28,7 @@ const getShareableLink = (req, token) => {
 // Create a new quiz
 exports.createQuiz = async (req, res) => {
   try {
-    const { title, description, timeLimit } = req.body;
+    const { title, description, timeLimit, rules } = req.body;
 
     if (!title || !timeLimit) {
       return res.status(400).json({ error: 'Title and time limit are required' });
@@ -39,6 +39,7 @@ exports.createQuiz = async (req, res) => {
       title,
       description,
       timeLimit: parseInt(timeLimit),
+      rules: rules || '',
       questions: []
     });
 
@@ -51,6 +52,7 @@ exports.createQuiz = async (req, res) => {
         title: quiz.title,
         description: quiz.description,
         timeLimit: quiz.timeLimit,
+        rules: quiz.rules,
         shareableToken: quiz.shareableToken,
         shareableLink: getShareableLink(req, quiz.shareableToken)
       }
@@ -58,6 +60,43 @@ exports.createQuiz = async (req, res) => {
   } catch (error) {
     console.error('Create quiz error:', error);
     res.status(500).json({ error: 'Server error while creating quiz' });
+  }
+};
+
+// Update quiz details (title, description, timeLimit, rules)
+exports.updateQuizDetails = async (req, res) => {
+  try {
+    const { title, description, timeLimit, rules } = req.body;
+
+    const quiz = await Quiz.findOne({
+      _id: req.params.id,
+      creatorId: req.userId
+    });
+
+    if (!quiz) {
+      return res.status(404).json({ error: 'Quiz not found' });
+    }
+
+    if (title) quiz.title = title;
+    if (description !== undefined) quiz.description = description;
+    if (timeLimit) quiz.timeLimit = parseInt(timeLimit);
+    if (rules !== undefined) quiz.rules = rules;
+
+    await quiz.save();
+
+    res.json({
+      message: 'Quiz details updated successfully',
+      quiz: {
+        id: quiz._id,
+        title: quiz.title,
+        description: quiz.description,
+        timeLimit: quiz.timeLimit,
+        rules: quiz.rules
+      }
+    });
+  } catch (error) {
+    console.error('Update quiz details error:', error);
+    res.status(500).json({ error: 'Server error while updating quiz details' });
   }
 };
 
@@ -207,11 +246,12 @@ if (typeof clues === 'string') {
       if (!correctAnswer) {
         return res.status(400).json({ error: 'Correct answer is required for text questions' });
       }
-      // Store as JSON string if it's an array
-      question.correctAnswer = Array.isArray(correctAnswer) 
-        ? JSON.stringify(correctAnswer) 
-        : correctAnswer;
-    }
+      // Convert all accepted answers to uppercase before storing
+  let answersArray = Array.isArray(correctAnswer) ? correctAnswer : [correctAnswer];
+  answersArray = answersArray.map(ans => ans.trim().toUpperCase());  // CONVERT TO UPPERCASE
+  
+  question.correctAnswer = JSON.stringify(answersArray);
+}
 
     // Add question to quiz
     quiz.questions.push(question);
@@ -321,9 +361,11 @@ if (cluesArray && cluesArray.length > 0) {
         }));
       }
     } else if (questionType === 'text' && correctAnswer) {
-      question.correctAnswer = Array.isArray(correctAnswer) 
-        ? JSON.stringify(correctAnswer) 
-        : correctAnswer;
+      // Convert all accepted answers to uppercase before storing
+      let answersArray = Array.isArray(correctAnswer) ? correctAnswer : [correctAnswer];
+      answersArray = answersArray.map(ans => ans.trim().toUpperCase());  // CONVERT TO UPPERCASE
+  
+      question.correctAnswer = JSON.stringify(answersArray);
     }
 
     await quiz.save();
@@ -377,6 +419,31 @@ exports.toggleLock = async (req, res) => {
   } catch (error) {
     console.error('Toggle lock error:', error);
     res.status(500).json({ error: 'Server error while toggling lock' });
+  }
+};
+
+// Toggle quiz start status
+exports.toggleStart = async (req, res) => {
+  try {
+    const quiz = await Quiz.findOne({
+      _id: req.params.id,
+      creatorId: req.userId
+    });
+
+    if (!quiz) {
+      return res.status(404).json({ error: 'Quiz not found' });
+    }
+
+    quiz.isStarted = !quiz.isStarted;
+    await quiz.save();
+
+    res.json({
+      message: `Quiz ${quiz.isStarted ? 'started' : 'stopped'} successfully`,
+      isStarted: quiz.isStarted
+    });
+  } catch (error) {
+    console.error('Toggle start error:', error);
+    res.status(500).json({ error: 'Server error while toggling start status' });
   }
 };
 
