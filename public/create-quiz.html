@@ -318,6 +318,11 @@
                     <label>Time Limit (minutes) *</label>
                     <input type="number" id="quizTimeLimit" required min="1" value="30">
                 </div>
+                <div class="form-group">
+                    <label>Quiz Rules (Optional)</label>
+                    <textarea id="quizRules" placeholder="Enter rules and instructions for participants (e.g., No calculators, No cheating, etc.)" rows="6"></textarea>
+                    <p class="info-text">These rules will be displayed to participants before they start the quiz</p>
+                </div>
                 <button type="submit" class="btn btn-primary">Next: Add Questions →</button>
             </form>
         </div>
@@ -419,7 +424,7 @@
 
     <div id="textAnswerContainer" class="form-group" style="display: none;">
         <label>Accepted Answers *</label>
-        <p class="info-text">Add all possible correct answers (e.g., "4", "four", "Four")</p>
+        <p class="info-text">Add all possible correct answers. Answers are case-insensitive and will be stored in UPPERCASE (e.g., "cat", "Cat", "CAT" are all treated the same)</p>
         <div class="add-answer-box">
             <input type="text" id="newAnswer" placeholder="Type an answer and click Add">
             <button type="button" class="btn btn-secondary" onclick="addAcceptedAnswer()">Add Answer</button>
@@ -517,6 +522,7 @@ async function createQuiz() {
     const title = document.getElementById('quizTitle').value;
     const description = document.getElementById('quizDescription').value;
     const timeLimit = document.getElementById('quizTimeLimit').value;
+    const rules = document.getElementById('quizRules').value;
 
     try {
         const response = await fetch(`${API_URL}/quiz`, {
@@ -525,7 +531,7 @@ async function createQuiz() {
                 'Content-Type': 'application/json',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ title, description, timeLimit })
+            body: JSON.stringify({ title, description, timeLimit, rules })
         });
 
         const data = await response.json();
@@ -623,12 +629,14 @@ function addAcceptedAnswer() {
         return;
     }
     
-    if (acceptedAnswers.includes(answer)) {
+    const uppercaseAnswer = answer.toUpperCase();
+    
+    if (acceptedAnswers.includes(uppercaseAnswer)) {
         alert('This answer already exists');
         return;
     }
     
-    acceptedAnswers.push(answer);
+    acceptedAnswers.push(uppercaseAnswer);  // STORE IN UPPERCASE
     input.value = '';
     displayAcceptedAnswers();
 }
@@ -755,8 +763,14 @@ function editQuestion(index) {
     document.getElementById('pointsUnattempted').value = points.unattempted;
     
     if (question.questionType === 'text') {
+        try {
         acceptedAnswers = JSON.parse(question.correctAnswer || '[]');
-        displayAcceptedAnswers();
+        // Ensure all answers are uppercase
+        acceptedAnswers = acceptedAnswers.map(ans => ans.toUpperCase());
+    } catch (e) {
+        acceptedAnswers = [];
+    }
+    displayAcceptedAnswers();
     } else {
         const optionsList = document.getElementById('optionsList');
         optionsList.innerHTML = '';
