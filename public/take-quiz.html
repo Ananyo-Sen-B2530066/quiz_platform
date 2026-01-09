@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Take Quiz - Secure Mode</title>
+    <title>Take Quiz</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -319,30 +319,49 @@
     </div>
     <div class="container">
         <div id="loadingState" class="card loading"><h2>Loading quiz...</h2></div>
-        <div id="startScreen" class="card" style="display: none;">
-            <h1 id="quizTitle"></h1>
-            <div class="quiz-info">
-                <p><strong>Time Limit:</strong> <span id="timeLimit"></span> minutes</p>
-                <p><strong>Questions:</strong> <span id="questionCount"></span></p>
-                <p id="quizDescription" style="margin-top: 10px;"></p>
-            </div>
-            <div class="security-notice">
-                <h3>🔒 Security Notice</h3>
-                <ul>
-                    <li>This quiz will run in <strong>fullscreen mode</strong></li>
-                    <li>Tab switching and window changes are <strong>monitored</strong></li>
-                    <li>You will receive <strong>3 warnings</strong> for leaving the quiz</li>
-                    <li>After 3 warnings, your quiz will be <strong>auto-submitted</strong></li>
-                    <li>Questions are <strong>randomized</strong> for each attempt</li>
-                </ul>
-            </div>
-            <div class="form-group">
-                <label>Enter your name to start:</label>
-                <input type="email" id="userEmail" placeholder="Your Name" required>
-            </div>
-            <div id="errorMessage" class="error-message" style="display: none;"></div>
-            <button class="btn-primary" onclick="startQuiz()" style="width: 100%;">Start Quiz (Fullscreen)</button>
-        </div>
+        <!-- Name Input Screen -->
+<div id="nameScreen" class="card" style="display: none;">
+    <h1 id="quizTitle"></h1>
+    <div class="quiz-info">
+        <p><strong>Time Limit:</strong> <span id="timeLimit"></span> minutes</p>
+        <p><strong>Questions:</strong> <span id="questionCount"></span></p>
+        <p id="quizDescription" style="margin-top: 10px;"></p>
+    </div>
+    <div class="form-group">
+        <label>Enter your name to continue:</label>
+        <input type="text" id="userEmail" placeholder="Your Name" required>
+    </div>
+    <div id="errorMessage" class="error-message" style="display: none;"></div>
+    <button class="btn-primary" onclick="proceedToRules()" style="width: 100%;">Enter Quiz →</button>
+</div>
+
+<!-- Rules Screen -->
+<div id="rulesScreen" class="card" style="display: none;">
+    <h1>📋 Quiz Rules & Instructions</h1>
+    <div id="quizNotStartedMessage" class="error-message" style="display: none;">
+        ⏸️ This quiz has not been started yet by the instructor. Please wait.
+    </div>
+    <div class="security-notice">
+        <h3>🔒 Security Notice</h3>
+        <ul>
+            <li>This quiz will run in <strong>fullscreen mode</strong></li>
+            <li>Tab switching and window changes are <strong>monitored</strong></li>
+            <li><strong>Page refresh is completely disabled</strong> during the quiz</li>
+            <li>You will receive <strong>3 warnings</strong> for leaving the quiz</li>
+            <li>After 3 warnings, your quiz will be <strong>auto-submitted</strong></li>
+            <li>Questions are <strong>randomized</strong> for each attempt</li>
+        </ul>
+    </div>
+    <div id="customRulesSection" style="margin-top: 20px;">
+        <!-- Custom rules will be inserted here -->
+    </div>
+    <button class="btn-primary" id="startQuizBtn" onclick="startQuiz()" style="width: 100%; margin-top: 30px;" disabled>
+        Start Quiz
+    </button>
+    <p id="quizNotStartedNote" style="text-align: center; color: #dc3545; margin-top: 10px; display: none;">
+        ⚠️ The quiz must be started by the instructor first
+    </p>
+</div>
         <div id="quizScreen" class="card" style="display: none;">
             <div class="progress"><div class="progress-bar" id="progressBar"></div></div>
             <div id="questionContainer"></div>
@@ -397,11 +416,73 @@ async function loadQuiz() {
 
 function displayStartScreen() {
     document.getElementById('loadingState').style.display = 'none';
-    document.getElementById('startScreen').style.display = 'block';
+    document.getElementById('nameScreen').style.display = 'block';
     document.getElementById('quizTitle').textContent = quiz.title;
     document.getElementById('timeLimit').textContent = quiz.timeLimit;
     document.getElementById('questionCount').textContent = quiz.questionCount;
     document.getElementById('quizDescription').textContent = quiz.description || '';
+}
+
+function proceedToRules() {
+    const name = document.getElementById('userEmail').value.trim();
+    if (!name) {
+        showError('Please enter your name');
+        return;
+    }
+    userIdentifier = name;
+    
+    // Hide name screen, show rules screen
+    document.getElementById('nameScreen').style.display = 'none';
+    document.getElementById('rulesScreen').style.display = 'block';
+    
+    // Display custom rules if available
+    if (quiz.rules && quiz.rules.trim()) {
+        document.getElementById('customRulesSection').innerHTML = `
+            <div style="background: #f9f9f9; padding: 20px; border-radius: 5px; border-left: 4px solid #667eea;">
+                <h3 style="color: #667eea; margin-bottom: 15px;">📌 Quiz-Specific Rules</h3>
+                <div style="white-space: pre-wrap; line-height: 1.6;">${quiz.rules}</div>
+            </div>
+        `;
+    }
+    
+    // Check if quiz is started
+    if (quiz.isStarted) {
+        document.getElementById('startQuizBtn').disabled = false;
+        document.getElementById('quizNotStartedNote').style.display = 'none';
+        document.getElementById('quizNotStartedMessage').style.display = 'none';
+    } else {
+        document.getElementById('startQuizBtn').disabled = true;
+        document.getElementById('quizNotStartedNote').style.display = 'block';
+        document.getElementById('quizNotStartedMessage').style.display = 'block';
+        
+        // Poll for quiz start status every 3 seconds
+        startPollingQuizStatus();
+    }
+}
+
+function startPollingQuizStatus() {
+    const pollInterval = setInterval(async () => {
+        try {
+            const token = window.location.pathname.split('/').pop();
+            const response = await fetch(`${API_URL}/attempt/quiz/${token}`);
+            const data = await response.json();
+            
+            if (response.ok && data.quiz.isStarted) {
+                document.getElementById('startQuizBtn').disabled = false;
+                document.getElementById('quizNotStartedNote').style.display = 'none';
+                document.getElementById('quizNotStartedMessage').style.display = 'none';
+                clearInterval(pollInterval);
+                
+                // Show notification
+                alert('✅ Quiz has been started! You can now begin.');
+            }
+        } catch (error) {
+            console.error('Polling error:', error);
+        }
+    }, 3000); // Check every 3 seconds
+    
+    // Store interval ID so we can clear it if user leaves
+    window.quizPollInterval = pollInterval;
 }
 
 function randomizeQuestions() {
@@ -430,13 +511,19 @@ function randomizeQuestions() {
     userAnswers = new Array(quiz.questions.length).fill(null);
     questionFlags = new Array(quiz.questions.length).fill(false); // NEW
 }
+
 async function startQuiz() {
-    const email = document.getElementById('userEmail').value.trim();
-    if (!email) {
-        showError('Please enter your name');
+    if (!userIdentifier) {
+        showError('Please enter your name first');
         return;
     }
-    userIdentifier = email;
+    
+    // Check if quiz has been started
+    if (!quiz.isStarted) {
+        alert('The quiz has not been started yet by the instructor. Please wait.');
+        return;
+    }
+    
     try {
         const response = await fetch(`${API_URL}/attempt/quiz/${window.location.pathname.split('/').pop()}/check`, {
             method: 'POST',
@@ -448,21 +535,27 @@ async function startQuiz() {
             showError('You have already attempted this quiz.');
             return;
         }
+        
+        // Clear polling interval if it exists
+        if (window.quizPollInterval) {
+            clearInterval(window.quizPollInterval);
+        }
+        
         randomizeQuestions();
         enterFullscreen();
         startTime = new Date().toISOString();
-        document.getElementById('startScreen').style.display = 'none';
+        document.getElementById('rulesScreen').style.display = 'none';
         document.getElementById('quizScreen').style.display = 'block';
         document.getElementById('timer').style.display = 'block';
         isQuizActive = true;
         setupSecurityMonitoring();
         startTimer();
         displayQuestion();
+        document.getElementById('questionNavigator').style.display = 'block';
+        updateNavigator();
     } catch (error) {
         showError('Network error. Please try again.');
     }
-    document.getElementById('questionNavigator').style.display = 'block';
-    updateNavigator();
 }
 
 function enterFullscreen() {
@@ -510,6 +603,57 @@ function setupSecurityMonitoring() {
         if (!isQuizActive) return;
         if (e.keyCode === 123 || (e.ctrlKey && e.shiftKey && (e.keyCode === 73 || e.keyCode === 74)) || (e.ctrlKey && e.keyCode === 85)) {
             e.preventDefault();
+            return false;
+        }
+    });
+
+    // **ADD THESE NEW LINES BELOW** - Block page refresh attempts
+    
+    // Block F5 key (refresh)
+    document.addEventListener('keydown', function(e) {
+        if (!isQuizActive) return;
+        
+        // F5 or Ctrl+R or Cmd+R
+        if (e.keyCode === 116 || 
+            ((e.ctrlKey || e.metaKey) && e.keyCode === 82)) {
+            e.preventDefault();
+            handleSecurityViolation('Page refresh is disabled during the quiz!');
+            return false;
+        }
+    });
+    
+    // Block browser refresh button and other refresh attempts
+    window.addEventListener('beforeunload', function(e) {
+        if (isQuizActive) {
+            e.preventDefault();
+            e.returnValue = 'Quiz in progress! Are you sure you want to leave?';
+            handleSecurityViolation('Attempted to leave the page!');
+            return 'Quiz in progress! Are you sure you want to leave?';
+        }
+    });
+    
+    // Additional keyboard shortcuts to block
+    document.addEventListener('keydown', function(e) {
+        if (!isQuizActive) return;
+        
+        // Block Ctrl+Shift+R (hard refresh)
+        if (e.ctrlKey && e.shiftKey && e.keyCode === 82) {
+            e.preventDefault();
+            handleSecurityViolation('Hard refresh is disabled during the quiz!');
+            return false;
+        }
+        
+        // Block Ctrl+F5 (hard refresh)
+        if (e.ctrlKey && e.keyCode === 116) {
+            e.preventDefault();
+            handleSecurityViolation('Hard refresh is disabled during the quiz!');
+            return false;
+        }
+        
+        // Block Cmd+Shift+R (Mac hard refresh)
+        if (e.metaKey && e.shiftKey && e.keyCode === 82) {
+            e.preventDefault();
+            handleSecurityViolation('Hard refresh is disabled during the quiz!');
             return false;
         }
     });
@@ -612,8 +756,14 @@ function displayQuestion() {
     const container = document.getElementById('questionContainer');
     let optionsHtml = '';
     if (question.questionType === 'text') {
-        optionsHtml = `<input type="text" class="text-input" id="textAnswer" placeholder="Type your answer here" value="${userAnswers[currentQuestionIndex] || ''}" onchange="saveTextAnswer(this.value)">`;
-    } else {
+    optionsHtml = `
+        <input type="text" class="text-input" id="textAnswer" 
+               placeholder="Type your answer here (case-insensitive)" 
+               value="${userAnswers[currentQuestionIndex] || ''}" 
+               onchange="saveTextAnswer(this.value)">
+        <p class="info-text">Note: Your answer will be automatically converted to uppercase for evaluation</p>
+    `;
+} else {
         const inputType = question.questionType === 'mcq' ? 'radio' : 'checkbox';
         optionsHtml = question.options.map((option, index) => {
             const isSelected = userAnswers[currentQuestionIndex]?.includes(option._id);
@@ -668,7 +818,9 @@ function selectOption(optionId, questionType) {
 }
 
 function saveTextAnswer(value) {
+    // Store the original value (it will be converted to uppercase during submission)
     userAnswers[currentQuestionIndex] = value;
+    updateNavigator();
 }
 
 function updateNavigation() {
