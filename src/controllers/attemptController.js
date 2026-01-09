@@ -7,7 +7,7 @@ exports.getQuizByToken = async (req, res) => {
     const { token } = req.params;
 
     const quiz = await Quiz.findOne({ shareableToken: token })
-      .select('title description timeLimit isLocked questions');
+      .select('title description timeLimit isLocked isStarted rules questions');
 
     if (!quiz) {
       return res.status(404).json({ error: 'Quiz not found' });
@@ -42,6 +42,8 @@ exports.getQuizByToken = async (req, res) => {
         description: quiz.description,
         timeLimit: quiz.timeLimit,
         questionCount: quiz.questions.length,
+        isStarted: quiz.isStarted,  
+        rules: quiz.rules || '', 
         questions: questionsWithoutAnswers
       }
     });
@@ -124,28 +126,32 @@ exports.submitAttempt = async (req, res) => {
       let status = 'unattempted';
 
       if (question.questionType === 'text') {
-        // Parse accepted answers if stored as JSON string
-        let acceptedAnswers = [];
-        try {
-          acceptedAnswers = JSON.parse(question.correctAnswer);
-        } catch (e) {
-          acceptedAnswers = [question.correctAnswer];
-        }
+  // Parse accepted answers if stored as JSON string
+  let acceptedAnswers = [];
+  try {
+    acceptedAnswers = JSON.parse(question.correctAnswer);
+  } catch (e) {
+    acceptedAnswers = [question.correctAnswer];
+  }
 
-        const userTextAnswer = response.textAnswer?.toLowerCase().trim();
-        isCorrect = acceptedAnswers.some(ans => 
-          ans.toLowerCase().trim() === userTextAnswer
-        );
+  // Convert user answer to uppercase for comparison
+  const userTextAnswer = response.textAnswer?.trim().toUpperCase() || '';  // CONVERT TO UPPERCASE
+  
+  // Compare with uppercase accepted answers
+  isCorrect = acceptedAnswers.some(ans => 
+    ans.toUpperCase().trim() === userTextAnswer  // ENSURE COMPARISON IS UPPERCASE
+  );
 
-        correctAnswer = acceptedAnswers;
-        userAnswer = response.textAnswer;
-        
-        if (response.textAnswer && response.textAnswer.trim()) {
-          status = isCorrect ? 'correct' : 'wrong';
-          earnedPoints = isCorrect ? points.correct : points.wrong;
-        } else {
-          earnedPoints = points.unattempted;
-        }
+  correctAnswer = acceptedAnswers;
+  userAnswer = response.textAnswer;
+  
+  if (response.textAnswer && response.textAnswer.trim()) {
+    status = isCorrect ? 'correct' : 'wrong';
+    earnedPoints = isCorrect ? points.correct : points.wrong;
+  } else {
+    earnedPoints = points.unattempted;
+  }
+}
 
       } else if (question.questionType === 'mcq') {
         if (response.selectedOptions && response.selectedOptions.length > 0) {
