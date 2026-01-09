@@ -370,26 +370,27 @@
                 let answerHTML = '';
 
                 // Text type questions
-                if (response.questionType === 'text') {
-                    answerHTML = `
-                        <div class="answer-group">
-                            <div class="answer-label">Your Answer:</div>
-                            <div class="text-answer user">
-                                ${response.textAnswer || '(Not answered)'}
-                            </div>
-                        </div>
-                        ${!response.isCorrect ? `
-                            <div class="answer-group">
-                                <div class="answer-label">Accepted Answers:</div>
-                                <div class="text-answer correct">
-                                    ${Array.isArray(response.correctAnswer) ? 
-                                      response.correctAnswer.join(', ') : 
-                                      response.correctAnswer}
-                                </div>
-                            </div>
-                        ` : ''}
-                    `;
-                }
+if (response.questionType === 'text') {
+    answerHTML = `
+        <div class="answer-group">
+            <div class="answer-label">Your Answer:</div>
+            <div class="text-answer user">
+                ${response.textAnswer || '(Not answered)'}
+                ${response.textAnswer ? '<span style="color: #666; font-size: 12px; margin-left: 10px;">(Evaluated as: ' + response.textAnswer.toUpperCase() + ')</span>' : ''}
+            </div>
+        </div>
+        ${!response.isCorrect ? `
+            <div class="answer-group">
+                <div class="answer-label">Accepted Answers (any of these):</div>
+                <div class="text-answer correct">
+                    ${Array.isArray(response.correctAnswer) ? 
+                      response.correctAnswer.join(', ') : 
+                      response.correctAnswer}
+                </div>
+            </div>
+        ` : ''}
+    `;
+}
                 // MCQ type questions
                 else if (response.questionType === 'mcq') {
                     answerHTML = `
