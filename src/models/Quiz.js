@@ -45,6 +45,8 @@ const quizSchema = new mongoose.Schema({
   description: { type: String },
   timeLimit: { type: Number, required: true },
   isLocked: { type: Boolean, default: false },
+  isStarted: { type: Boolean, default: false },  // ADD THIS LINE
+  rules: { type: String, default: '' },  // ADD THIS LINE
   shareableToken: { 
     type: String, 
     unique: true, 
