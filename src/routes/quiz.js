@@ -11,8 +11,10 @@ router.use(auth);
 router.post('/', quizController.createQuiz);
 router.get('/', quizController.getMyQuizzes);
 router.get('/:id', quizController.getQuizById);
+router.put('/:id', quizController.updateQuizDetails);
 router.delete('/:id', quizController.deleteQuiz);
 router.patch('/:id/lock', quizController.toggleLock);
+router.patch('/:id/start', quizController.toggleStart);
 
 // Question management
 router.post('/:quizId/questions', upload.single('media'), quizController.addQuestion);
