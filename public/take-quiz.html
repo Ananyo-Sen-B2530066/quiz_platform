@@ -396,8 +396,63 @@ let lastViolationTime = 0;
 const VIOLATION_COOLDOWN = 2000; // 2 seconds cooldown
 let questionFlags = [];
 let seenQuestions = new Set();
+const QUIZ_SESSION_KEY = 'activeQuizSession';
+
+// Check if there was an active quiz session before reload
+function checkForActiveSession() {
+    const activeSession = sessionStorage.getItem(QUIZ_SESSION_KEY);
+    if (activeSession) {
+        try {
+            const session = JSON.parse(activeSession);
+            // Show message that quiz was auto-submitted due to reload
+            document.getElementById('loadingState').innerHTML = `
+                <h2 style="color: #dc3545;">⚠️ Quiz Auto-Submitted</h2>
+                <p>Your quiz was automatically submitted because you reloaded the page.</p>
+                <p>This action is monitored to prevent cheating.</p>
+                <p><strong>Your answers up to that point have been saved.</strong></p>
+                <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 5px; text-align: left;">
+                    <strong>Details:</strong><br>
+                    User: ${session.userIdentifier}<br>
+                    Started: ${new Date(session.startedAt).toLocaleString()}<br>
+                    Auto-submitted: ${new Date().toLocaleString()}<br>
+                    Reason: Page reload detected
+                </div>
+            `;
+            // Clear the session
+            sessionStorage.removeItem(QUIZ_SESSION_KEY);
+            // Stop further loading
+            return true;
+        } catch (e) {
+            console.error('Session check error:', e);
+        }
+    }
+    return false;
+}
+
+// Save active quiz session
+function saveQuizSession() {
+    if (isQuizActive && userIdentifier && startTime) {
+        const session = {
+            userIdentifier: userIdentifier,
+            startedAt: startTime,
+            quizToken: window.location.pathname.split('/').pop(),
+            timestamp: new Date().toISOString()
+        };
+        sessionStorage.setItem(QUIZ_SESSION_KEY, JSON.stringify(session));
+    }
+}
+
+// Clear quiz session (when quiz is properly submitted)
+function clearQuizSession() {
+    sessionStorage.removeItem(QUIZ_SESSION_KEY);
+}
 
 async function loadQuiz() {
+    // Check if page was reloaded during active quiz
+    if (checkForActiveSession()) {
+        return; // Stop loading if session was active
+    }
+    
     const token = window.location.pathname.split('/').pop();
     try {
         const response = await fetch(`${API_URL}/attempt/quiz/${token}`);
@@ -549,6 +604,10 @@ async function startQuiz() {
         document.getElementById('quizScreen').style.display = 'block';
         document.getElementById('timer').style.display = 'block';
         isQuizActive = true;
+        
+        // Save session to detect reload
+        saveQuizSession();
+        
         setupSecurityMonitoring();
         startTimer();
         displayQuestion();
@@ -626,10 +685,13 @@ function setupSecurityMonitoring() {
     // Block browser refresh button and other refresh attempts
     window.addEventListener('beforeunload', function(e) {
         if (isQuizActive) {
+            // If they're really leaving, auto-submit the quiz
+            // This runs synchronously before page unloads
+            submitQuizOnReload();
+            
             e.preventDefault();
-            e.returnValue = 'Quiz in progress! Are you sure you want to leave?';
-            handleSecurityViolation('Attempted to leave the page!');
-            return 'Quiz in progress! Are you sure you want to leave?';
+            e.returnValue = 'Quiz in progress! Reloading will auto-submit your quiz!';
+            return 'Quiz in progress! Reloading will auto-submit your quiz!';
         }
     });
     
@@ -683,6 +745,9 @@ function cleanupSecurityMonitoring() {
     isQuizActive = false;
     if (visibilityChangeHandler) document.removeEventListener('visibilitychange', visibilityChangeHandler);
     if (blurHandler) window.removeEventListener('blur', blurHandler);
+    
+    // Clear session when quiz is properly ended
+    clearQuizSession();
 }
 
 function showError(message) {
@@ -851,6 +916,10 @@ function previousQuestion() {
 
 async function submitQuiz(autoSubmit = false) {
     if (!autoSubmit && !confirm('Are you sure you want to submit?')) return;
+    
+    // Clear session - normal submit
+    clearQuizSession();
+    
     clearInterval(timerInterval);
     cleanupSecurityMonitoring();
     if (document.exitFullscreen) document.exitFullscreen();
@@ -873,6 +942,42 @@ async function submitQuiz(autoSubmit = false) {
         else alert(data.error || 'Error submitting quiz');
     } catch (error) {
         alert('Network error. Please try again.');
+    }
+}
+
+// Auto-submit quiz on page reload (synchronous version)
+function submitQuizOnReload() {
+    if (!isQuizActive) return;
+    
+    try {
+        const token = window.location.pathname.split('/').pop();
+        const responses = quiz.questions.map((question, originalIndex) => {
+            const randomizedIndex = randomizedQuestions.indexOf(originalIndex);
+            const response = { questionId: question._id };
+            if (question.questionType === 'text') {
+                response.textAnswer = userAnswers[randomizedIndex] || '';
+            } else {
+                response.selectedOptions = userAnswers[randomizedIndex] || [];
+            }
+            return response;
+        });
+        
+        // Use synchronous XMLHttpRequest for beforeunload
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', `${API_URL}/attempt/quiz/${token}/submit`, false); // false = synchronous
+        xhr.setRequestHeader('Content-Type', 'application/json');
+        xhr.send(JSON.stringify({
+            userIdentifier,
+            responses,
+            startedAt: startTime,
+            warningCount: 999, // Special flag to indicate auto-submit
+            autoSubmitted: true,
+            reason: 'Page reload'
+        }));
+        
+        // Session will persist, showing the message on reload
+    } catch (error) {
+        console.error('Auto-submit error:', error);
     }
 }
 
