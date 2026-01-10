@@ -104,7 +104,7 @@ exports.updateQuizDetails = async (req, res) => {
 exports.getMyQuizzes = async (req, res) => {
   try {
     const quizzes = await Quiz.find({ creatorId: req.userId })
-      .select('title description timeLimit isLocked shareableToken createdAt questions')
+      .select('title description timeLimit isLocked isStarted shareableToken createdAt questions')
       .sort({ createdAt: -1 });
 
     const quizzesWithLinks = quizzes.map(quiz => ({
@@ -113,6 +113,7 @@ exports.getMyQuizzes = async (req, res) => {
       description: quiz.description,
       timeLimit: quiz.timeLimit,
       isLocked: quiz.isLocked,
+      isStarted: quiz.isStarted,
       questionCount: quiz.questions.length,
       shareableToken: quiz.shareableToken,
       shareableLink: getShareableLink(req, quiz.shareableToken),
