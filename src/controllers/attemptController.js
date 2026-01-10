@@ -98,8 +98,17 @@ exports.submitAttempt = async (req, res) => {
       userIdentifier
     });
 
-    if (existingAttempt) {
+    // Allow if this is an auto-submit (page reload recovery)
+    const isAutoSubmit = req.body.autoSubmitted === true;
+    
+    if (existingAttempt && !isAutoSubmit) {
       return res.status(400).json({ error: 'You have already attempted this quiz' });
+    }
+    
+    // If auto-submit and attempt exists, update it instead of creating new
+    if (existingAttempt && isAutoSubmit) {
+      // Delete the old attempt so we can create a new one with auto-submit flag
+      await Attempt.findByIdAndDelete(existingAttempt._id);
     }
 
     // Validate time limit
