@@ -468,6 +468,7 @@ function startPollingQuizStatus() {
             const data = await response.json();
             
             if (response.ok && data.quiz.isStarted) {
+                quiz.isStarted = true;
                 document.getElementById('startQuizBtn').disabled = false;
                 document.getElementById('quizNotStartedNote').style.display = 'none';
                 document.getElementById('quizNotStartedMessage').style.display = 'none';
