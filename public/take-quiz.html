@@ -397,41 +397,102 @@ const VIOLATION_COOLDOWN = 2000; // 2 seconds cooldown
 let questionFlags = [];
 let seenQuestions = new Set();
 const QUIZ_SESSION_KEY = 'activeQuizSession';
+const QUIZ_ANSWERS_KEY = 'quizAnswersBackup';
 
 // Check if there was an active quiz session before reload
 function checkForActiveSession() {
     const activeSession = sessionStorage.getItem(QUIZ_SESSION_KEY);
-    if (activeSession) {
+    const savedAnswers = localStorage.getItem(QUIZ_ANSWERS_KEY);
+    
+    if (activeSession && savedAnswers) {
         try {
             const session = JSON.parse(activeSession);
-            // Show message that quiz was auto-submitted due to reload
+            const answers = JSON.parse(savedAnswers);
+            
+            // Show loading message
             document.getElementById('loadingState').innerHTML = `
-                <h2 style="color: #dc3545;">⚠️ Quiz Auto-Submitted</h2>
-                <p>Your quiz was automatically submitted because you reloaded the page.</p>
-                <p>This action is monitored to prevent cheating.</p>
-                <p><strong>Your answers up to that point have been saved.</strong></p>
-                <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 5px; text-align: left;">
-                    <strong>Details:</strong><br>
-                    User: ${session.userIdentifier}<br>
-                    Started: ${new Date(session.startedAt).toLocaleString()}<br>
-                    Auto-submitted: ${new Date().toLocaleString()}<br>
-                    Reason: Page reload detected
-                </div>
+                <h2 style="color: #667eea;">⏳ Submitting Your Quiz...</h2>
+                <p>Please wait while we save your answers from the interrupted session.</p>
             `;
-            // Clear the session
-            sessionStorage.removeItem(QUIZ_SESSION_KEY);
-            // Stop further loading
+            
+            // Submit the saved answers
+            submitSavedAnswers(session, answers);
             return true;
         } catch (e) {
-            console.error('Session check error:', e);
+            console.error('Session recovery error:', e);
+            // Clear corrupted data
+            sessionStorage.removeItem(QUIZ_SESSION_KEY);
+            localStorage.removeItem(QUIZ_ANSWERS_KEY);
         }
     }
     return false;
 }
 
-// Save active quiz session
+// Submit saved answers after page reload
+async function submitSavedAnswers(session, answers) {
+    try {
+        const response = await fetch(`${API_URL}/attempt/quiz/${session.quizToken}/submit`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                userIdentifier: session.userIdentifier,
+                responses: answers.responses,
+                startedAt: session.startedAt,
+                warningCount: 999,
+                autoSubmitted: true,
+                reason: 'Page reload - auto recovered'
+            })
+        });
+        
+        const data = await response.json();
+        
+        // Clear saved data
+        sessionStorage.removeItem(QUIZ_SESSION_KEY);
+        localStorage.removeItem(QUIZ_ANSWERS_KEY);
+        
+        if (response.ok) {
+            // Show success message
+            document.getElementById('loadingState').innerHTML = `
+                <h2 style="color: #28a745;">✅ Quiz Auto-Submitted Successfully</h2>
+                <p>Your quiz was automatically submitted because the page was reloaded.</p>
+                <div style="margin-top: 20px; padding: 20px; background: #d4edda; border-radius: 5px; text-align: left; border-left: 4px solid #28a745;">
+                    <strong>📊 Your Results:</strong><br><br>
+                    <div style="font-size: 18px; margin: 10px 0;">
+                        Score: <strong>${data.score} / ${data.maxScore}</strong> (${data.percentage}%)
+                    </div>
+                    User: ${session.userIdentifier}<br>
+                    Started: ${new Date(session.startedAt).toLocaleString()}<br>
+                    Auto-submitted: ${new Date().toLocaleString()}<br>
+                    Reason: Page reload detected
+                </div>
+                <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 5px;">
+                    ⚠️ <strong>Note:</strong> Your answers have been saved. You cannot retake this quiz.
+                </div>
+            `;
+        } else {
+            // Show error
+            document.getElementById('loadingState').innerHTML = `
+                <h2 style="color: #dc3545;">❌ Submission Error</h2>
+                <p>${data.error || 'Could not save your quiz answers.'}</p>
+                <p>You may have already submitted this quiz.</p>
+            `;
+        }
+    } catch (error) {
+        console.error('Submit saved answers error:', error);
+        document.getElementById('loadingState').innerHTML = `
+            <h2 style="color: #dc3545;">❌ Network Error</h2>
+            <p>Could not submit your quiz answers due to a network error.</p>
+            <p>Error: ${error.message}</p>
+        `;
+    }
+}
+
+// Save quiz session and current answers
 function saveQuizSession() {
-    if (isQuizActive && userIdentifier && startTime) {
+    if (!isQuizActive || !userIdentifier || !startTime) return;
+    
+    try {
+        // Save session info
         const session = {
             userIdentifier: userIdentifier,
             startedAt: startTime,
@@ -439,12 +500,41 @@ function saveQuizSession() {
             timestamp: new Date().toISOString()
         };
         sessionStorage.setItem(QUIZ_SESSION_KEY, JSON.stringify(session));
+        
+        // Save current answers
+        const responses = quiz.questions.map((question, originalIndex) => {
+            const randomizedIndex = randomizedQuestions.indexOf(originalIndex);
+            const response = { questionId: question._id };
+            if (question.questionType === 'text') {
+                response.textAnswer = userAnswers[randomizedIndex] || '';
+            } else {
+                response.selectedOptions = userAnswers[randomizedIndex] || [];
+            }
+            return response;
+        });
+        
+        const answersBackup = {
+            responses: responses,
+            savedAt: new Date().toISOString()
+        };
+        localStorage.setItem(QUIZ_ANSWERS_KEY, JSON.stringify(answersBackup));
+        
+    } catch (error) {
+        console.error('Save session error:', error);
     }
 }
 
-// Clear quiz session (when quiz is properly submitted)
+// Clear quiz session
 function clearQuizSession() {
     sessionStorage.removeItem(QUIZ_SESSION_KEY);
+    localStorage.removeItem(QUIZ_ANSWERS_KEY);
+}
+
+// Update answers backup whenever user answers a question
+function updateAnswersBackup() {
+    if (isQuizActive) {
+        saveQuizSession(); // This saves both session and answers
+    }
 }
 
 async function loadQuiz() {
@@ -685,9 +775,8 @@ function setupSecurityMonitoring() {
     // Block browser refresh button and other refresh attempts
     window.addEventListener('beforeunload', function(e) {
         if (isQuizActive) {
-            // If they're really leaving, auto-submit the quiz
-            // This runs synchronously before page unloads
-            submitQuizOnReload();
+            // Save current state before leaving
+            saveQuizSession();
             
             e.preventDefault();
             e.returnValue = 'Quiz in progress! Reloading will auto-submit your quiz!';
@@ -881,12 +970,13 @@ function selectOption(optionId, questionType) {
         else userAnswers[currentQuestionIndex].push(optionId);
     }
     displayQuestion();
+    updateAnswersBackup(); // ← ADD THIS LINE
 }
 
 function saveTextAnswer(value) {
-    // Store the original value (it will be converted to uppercase during submission)
     userAnswers[currentQuestionIndex] = value;
     updateNavigator();
+    updateAnswersBackup(); // ← ADD THIS LINE
 }
 
 function updateNavigation() {
@@ -942,42 +1032,6 @@ async function submitQuiz(autoSubmit = false) {
         else alert(data.error || 'Error submitting quiz');
     } catch (error) {
         alert('Network error. Please try again.');
-    }
-}
-
-// Auto-submit quiz on page reload (synchronous version)
-function submitQuizOnReload() {
-    if (!isQuizActive) return;
-    
-    try {
-        const token = window.location.pathname.split('/').pop();
-        const responses = quiz.questions.map((question, originalIndex) => {
-            const randomizedIndex = randomizedQuestions.indexOf(originalIndex);
-            const response = { questionId: question._id };
-            if (question.questionType === 'text') {
-                response.textAnswer = userAnswers[randomizedIndex] || '';
-            } else {
-                response.selectedOptions = userAnswers[randomizedIndex] || [];
-            }
-            return response;
-        });
-        
-        // Use synchronous XMLHttpRequest for beforeunload
-        const xhr = new XMLHttpRequest();
-        xhr.open('POST', `${API_URL}/attempt/quiz/${token}/submit`, false); // false = synchronous
-        xhr.setRequestHeader('Content-Type', 'application/json');
-        xhr.send(JSON.stringify({
-            userIdentifier,
-            responses,
-            startedAt: startTime,
-            warningCount: 999, // Special flag to indicate auto-submit
-            autoSubmitted: true,
-            reason: 'Page reload'
-        }));
-        
-        // Session will persist, showing the message on reload
-    } catch (error) {
-        console.error('Auto-submit error:', error);
     }
 }
 
