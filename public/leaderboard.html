@@ -319,7 +319,8 @@
                             <th>Participant</th>
                             <th>Score</th>
                             <th>Percentage</th>
-                            <th>Metrics</th>
+                            <th>Level Breakdown</th>
+                            <th>Other Metrics</th>
                             <th>Time</th>
                             <th>Action</th>
                         </tr>
@@ -354,24 +355,36 @@
         }
 
         function calculateRankingMetrics(attempt) {
-            const importantCorrect = attempt.responses.filter(r => 
-                r.isImportant && r.isCorrect
-            ).length;
+    const importantCorrect = attempt.responses.filter(r => 
+        r.isImportant && r.isCorrect
+    ).length;
 
-            const negativeMarks = attempt.responses.reduce((sum, r) => {
-                return sum + (r.earnedPoints < 0 ? Math.abs(r.earnedPoints) : 0);
-            }, 0);
+    const negativeMarks = attempt.responses.reduce((sum, r) => {
+        return sum + (r.earnedPoints < 0 ? Math.abs(r.earnedPoints) : 0);
+    }, 0);
 
-            const timeTaken = new Date(attempt.submittedAt) - new Date(attempt.startedAt);
+    const timeTaken = new Date(attempt.submittedAt) - new Date(attempt.startedAt);
 
-            return {
-                importantCorrect,
-                negativeMarks,
-                timeTaken
-            };
-        }
+    // Calculate correct answers per difficulty level
+    const level5Correct = attempt.responses.filter(r => r.isCorrect && r.questionLevel === 5).length;
+    const level4Correct = attempt.responses.filter(r => r.isCorrect && r.questionLevel === 4).length;
+    const level3Correct = attempt.responses.filter(r => r.isCorrect && r.questionLevel === 3).length;
+    const level2Correct = attempt.responses.filter(r => r.isCorrect && r.questionLevel === 2).length;
+    const level1Correct = attempt.responses.filter(r => r.isCorrect && r.questionLevel === 1).length;
 
-        function rankAttempts(attempts) {
+    return {
+        importantCorrect,
+        negativeMarks,
+        timeTaken,
+        level5Correct,
+        level4Correct,
+        level3Correct,
+        level2Correct,
+        level1Correct
+    };
+}
+
+    function rankAttempts(attempts) {
     return attempts
         .map(attempt => ({
             ...attempt,
@@ -391,18 +404,32 @@
                 return b.metrics.importantCorrect - a.metrics.importantCorrect;
             }
 
-            // NEW Rule 4: Higher level questions correct
-            const aHighLevelCorrect = a.responses.filter(r => 
-                r.isCorrect && r.questionLevel >= 4
-            ).length;
-            const bHighLevelCorrect = b.responses.filter(r => 
-                r.isCorrect && r.questionLevel >= 4
-            ).length;
-            if (aHighLevelCorrect !== bHighLevelCorrect) {
-                return bHighLevelCorrect - aHighLevelCorrect;
+            // Rule 4: Level 5 correct answers (most important)
+            if (a.metrics.level5Correct !== b.metrics.level5Correct) {
+                return b.metrics.level5Correct - a.metrics.level5Correct;
             }
 
-            // Rule 5: Faster submission time
+            // Rule 5: Level 4 correct answers
+            if (a.metrics.level4Correct !== b.metrics.level4Correct) {
+                return b.metrics.level4Correct - a.metrics.level4Correct;
+            }
+
+            // Rule 6: Level 3 correct answers
+            if (a.metrics.level3Correct !== b.metrics.level3Correct) {
+                return b.metrics.level3Correct - a.metrics.level3Correct;
+            }
+
+            // Rule 7: Level 2 correct answers
+            if (a.metrics.level2Correct !== b.metrics.level2Correct) {
+                return b.metrics.level2Correct - a.metrics.level2Correct;
+            }
+
+            // Rule 8: Level 1 correct answers
+            if (a.metrics.level1Correct !== b.metrics.level1Correct) {
+                return b.metrics.level1Correct - a.metrics.level1Correct;
+            }
+
+            // Rule 9: Faster submission time
             return a.metrics.timeTaken - b.metrics.timeTaken;
         })
         .slice(0, 10);
@@ -516,40 +543,49 @@
                     : '';
 
                 return `
-                    <tr>
-                        <td class="rank-cell ${rankClass}">${rankDisplay}</td>
-                        <td class="user-cell">
-                            ${attempt.userIdentifier}
-                            ${tieIndicator}
-                        </td>
-                        <td class="score-cell">${attempt.score} / ${attempt.maxScore}</td>
-                        <td>
-                            <span class="percentage-badge ${percentageClass}">
-                                ${percentage}%
-                            </span>
-                        </td>
-                        <td>
-                            <div style="display: flex; flex-wrap: wrap; gap: 4px;">
-                                <span class="metric-badge important">
-                                    ⭐ ${attempt.metrics.importantCorrect}
-                                </span>
-                                <span class="metric-badge penalty">
-                                    ⚠️ -${attempt.metrics.negativeMarks}
-                                </span>
-                            </div>
-                        </td>
-                        <td>
-                            <span class="metric-badge time">
-                                ⏱️ ${formatTime(attempt.metrics.timeTaken)}
-                            </span>
-                        </td>
-                        <td>
-                            <button class="action-btn" onclick="viewAttempt('${attempt.id}')">
-                                View Details
-                            </button>
-                        </td>
-                    </tr>
-                `;
+    <tr>
+        <td class="rank-cell ${rankClass}">${rankDisplay}</td>
+        <td class="user-cell">
+            ${attempt.userIdentifier}
+            ${tieIndicator}
+        </td>
+        <td class="score-cell">${attempt.score} / ${attempt.maxScore}</td>
+        <td>
+            <span class="percentage-badge ${percentageClass}">
+                ${percentage}%
+            </span>
+        </td>
+        <td>
+            <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+                ${attempt.metrics.level5Correct > 0 ? `<span class="metric-badge" style="background: #e8f5e9; color: #2e7d32; font-weight: bold;">L5: ${attempt.metrics.level5Correct}</span>` : ''}
+                ${attempt.metrics.level4Correct > 0 ? `<span class="metric-badge" style="background: #e3f2fd; color: #1565c0;">L4: ${attempt.metrics.level4Correct}</span>` : ''}
+                ${attempt.metrics.level3Correct > 0 ? `<span class="metric-badge" style="background: #fff3e0; color: #e65100;">L3: ${attempt.metrics.level3Correct}</span>` : ''}
+                ${attempt.metrics.level2Correct > 0 ? `<span class="metric-badge" style="background: #fce4ec; color: #c2185b;">L2: ${attempt.metrics.level2Correct}</span>` : ''}
+                ${attempt.metrics.level1Correct > 0 ? `<span class="metric-badge" style="background: #f3e5f5; color: #7b1fa2;">L1: ${attempt.metrics.level1Correct}</span>` : ''}
+            </div>
+        </td>
+        <td>
+            <div style="display: flex; flex-wrap: wrap; gap: 4px;">
+                <span class="metric-badge important">
+                    â­ ${attempt.metrics.importantCorrect}
+                </span>
+                <span class="metric-badge penalty">
+                    âš ï¸ -${attempt.metrics.negativeMarks}
+                </span>
+            </div>
+        </td>
+        <td>
+            <span class="metric-badge time">
+                â±ï¸ ${formatTime(attempt.metrics.timeTaken)}
+            </span>
+        </td>
+        <td>
+            <button class="action-btn" onclick="viewAttempt('${attempt.id}')">
+                View Details
+            </button>
+        </td>
+    </tr>
+`;
             }).join('');
         }
 
